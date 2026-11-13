@@ -36,6 +36,13 @@ Servicios:
 | Frontend | http://localhost:5173 |
 | Mailpit | http://localhost:8025 |
 
+El entorno virtual del backend vive en `/opt/venv` dentro de la imagen, así el
+bind mount del código no lo tapa. Al cambiar dependencias:
+
+```bash
+docker compose build api worker scheduler
+```
+
 Credenciales del seed de desarrollo:
 
 | Rol | Email | Contraseña |

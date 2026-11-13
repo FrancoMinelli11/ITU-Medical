@@ -1,4 +1,4 @@
-name: ${COMPOSE_PROJECT_NAME:-turnos}
+﻿name: ${COMPOSE_PROJECT_NAME:-turnos}
 
 services:
   db:
@@ -55,7 +55,6 @@ services:
       - ./backend:/workspace/backend
       - ./alembic.ini:/workspace/alembic.ini:ro
       - ./scripts:/workspace/scripts:ro
-      - backend_venv:/workspace/backend/.venv
     depends_on:
       db:
         condition: service_healthy
@@ -86,7 +85,6 @@ services:
       PYTHONPATH: /workspace/backend
     volumes:
       - ./backend:/workspace/backend
-      - backend_venv:/workspace/backend/.venv
     depends_on:
       db:
         condition: service_healthy
@@ -105,7 +103,6 @@ services:
       PYTHONPATH: /workspace/backend
     volumes:
       - ./backend:/workspace/backend
-      - backend_venv:/workspace/backend/.venv
     depends_on:
       db:
         condition: service_healthy
@@ -133,5 +130,4 @@ services:
 volumes:
   pgdata:
   redisdata:
-  backend_venv:
   frontend_node_modules:
