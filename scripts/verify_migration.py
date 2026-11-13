@@ -120,10 +120,11 @@ async def verificar(dsn: str) -> None:
         await _verificar_exclusiones(conn, ids)
         await _verificar_checks(conn, ids)
         await _verificar_unicidades(conn, ids)
+        await _verificar_inmutabilidad(conn, ids)
     finally:
         await conn.close()
 
-    print("\n[9] downgrade base y upgrade head")
+    print("\n[10] downgrade base y upgrade head")
     resultado = run_alembic("downgrade", url)
     check("downgrade base", resultado.returncode == 0, resultado.stderr[-500:])
     resultado = run_alembic("upgrade", url)
@@ -371,6 +372,55 @@ async def _verificar_unicidades(conn: asyncpg.Connection, ids: dict[str, Any]) -
         ids["user_maker"],
     )
     check("nueva restricción tras desactivar la anterior -> aceptada", True)
+
+
+async def _verificar_inmutabilidad(conn: asyncpg.Connection, ids: dict[str, Any]) -> None:
+    """Valida el supuesto del workaround: el cálculo en UTC es inmutable y estable."""
+    print("\n[9] inmutabilidad y zona horaria")
+    base = datetime(2032, 3, 15, 10, 0, tzinfo=UTC)
+    zonas = ["UTC", "America/Argentina/Buenos_Aires", "America/New_York", "Asia/Tokyo"]
+
+    valores = []
+    for zona in zonas:
+        await conn.execute(f"SET TIME ZONE '{zona}'")
+        valores.append(await conn.fetchval("SELECT rango_turno($1, $2)", base, 45))
+
+    await conn.execute("SET TIME ZONE 'UTC'")
+    primero = valores[0]
+    check(
+        "rango_turno no depende de la zona horaria de la sesión",
+        all(valor == primero for valor in valores),
+        f"({[str(valor) for valor in valores]})",
+    )
+
+    referencia = await conn.fetchval(
+        "SELECT tstzrange($1::timestamptz, $1::timestamptz + make_interval(mins => $2))",
+        base,
+        45,
+    )
+    check(
+        "coincide con la aritmética absoluta de minutos (UTC)",
+        primero == referencia,
+        f"(calculado: {primero}, referencia: {referencia})",
+    )
+
+    await conn.execute(
+        INSERT_TURNO, ids["pac1"], ids["med1"], base, 45, "RESERVADO", ids["user_maker"]
+    )
+    await conn.execute("SET TIME ZONE 'Asia/Tokyo'")
+    await espera_exclusion(
+        conn,
+        "el solapamiento se detecta aunque cambie la zona de la sesión",
+        (
+            ids["pac2"],
+            ids["med1"],
+            base + timedelta(minutes=10),
+            45,
+            "RESERVADO",
+            ids["user_maker"],
+        ),
+    )
+    await conn.execute("SET TIME ZONE 'UTC'")
 
 
 async def main() -> int:
