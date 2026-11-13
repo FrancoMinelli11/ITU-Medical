@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: turnos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d turnos"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/turnos
+      ALEMBIC_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/turnos
+      REDIS_URL: redis://localhost:6379/0
+      RATE_LIMIT_STORAGE_URL: redis://localhost:6379/1
+      ARQ_REDIS_URL: redis://localhost:6379/2
+      JWT_SECRET_KEY: ci-only-secret-change-me
+      SMTP_HOST: localhost
+      SMTP_PORT: 1025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Instalar dependencias
+        run: uv sync --project backend
+      - name: Lint
+        run: uv run --project backend ruff check backend scripts
+      - name: Formato
+        run: uv run --project backend ruff format --check backend scripts
+      - name: Type check
+        run: uv run --project backend mypy backend/app
+      - name: Migraciones
+        run: uv run --project backend alembic -c alembic.ini upgrade head
+      - name: Verificar esquema y constraints
+        run: uv run --project backend python scripts/verify_migration.py --url "$DATABASE_URL"
+      - name: Tests
+        run: uv run --project backend pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Type check
+        run: pnpm typecheck
+      - name: Tests
+        run: pnpm test:run
+      - name: Build
+        run: pnpm build
