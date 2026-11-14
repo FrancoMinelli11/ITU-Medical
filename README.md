@@ -35,6 +35,11 @@ Servicios:
 | API / Swagger | http://localhost:8000/docs |
 | Frontend | http://localhost:5173 |
 | Mailpit | http://localhost:8025 |
+| PostgreSQL | `localhost:5433` (mapeado a 5432 interno) |
+
+`DB_PORT` define el puerto del host: el valor por defecto es **5433** porque en
+este host de desarrollo `5432` lo ocupa un PostgreSQL nativo. El puerto interno
+del contenedor es siempre `5432`, así que dentro de Compose nada cambia.
 
 El entorno virtual del backend vive en `/opt/venv` dentro de la imagen, así el
 bind mount del código no lo tapa. Al cambiar dependencias:
@@ -95,8 +100,27 @@ pnpm build
 > docker compose exec db psql -U postgres -c "DROP DATABASE turnos_verify;"
 > ```
 >
-> `docker compose exec api pytest` no aplica `pytest.ini` (no está en la imagen):
-> corré los tests desde el host.
+> Sin `--url` el script levanta un PostgreSQL embebido con `pgserver`, que no es
+> una dependencia del proyecto: en ese caso imprime las dos alternativas y sale
+> con código 1 en lugar de fallar con un `ModuleNotFoundError`.
+
+## Tests
+
+`pytest` corre igual desde el host y desde el contenedor (`pytest.ini` se copia
+a la imagen), incluidos los 21 checks de integración de la migración. La suite
+de integración necesita `TEST_DATABASE_URL`; `backend/tests/conftest.py` carga
+`.env`, así que:
+
+- **host**: apunta a `localhost:${DB_PORT}` (por defecto `5433`) y usa el
+  PostgreSQL de Compose;
+- **contenedor `api`**: Compose redefine la variable a `db:5432` (red interna);
+- **CI**: no hay `.env`, así que se usa el `DATABASE_URL` del job con el service
+  de Postgres.
+
+Ningún test se saltea por defecto. Se skipean solo si el PostgreSQL de
+`TEST_DATABASE_URL` no está levantado (por ejemplo, con Compose caído), y el
+motivo aparece en el resumen con `pytest -rs`.
+
 
 ## Arquitectura
 
