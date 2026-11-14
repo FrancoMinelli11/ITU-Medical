@@ -61,10 +61,21 @@ jobs:
         run: uv run --project backend mypy backend/app
       - name: Migraciones
         run: uv run --project backend alembic -c alembic.ini upgrade head
+      - name: Sincronización de modelos y migración
+        run: uv run --project backend alembic -c alembic.ini check
       - name: Verificar esquema y constraints
         run: uv run --project backend python scripts/verify_migration.py --url "$DATABASE_URL"
       - name: Tests
         run: uv run --project backend pytest
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar entorno de Compose
+        run: cp .env.example .env
+      - name: Construir imágenes
+        run: docker compose build
 
   frontend:
     runs-on: ubuntu-latest
