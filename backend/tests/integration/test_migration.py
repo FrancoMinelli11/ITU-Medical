@@ -30,7 +30,9 @@ import scripts.verify_migration as verify  # noqa: E402
 
 pytestmark = pytest.mark.integration
 
-BASE_TEMPORAL = "turnos_test_migration"
+# Una base por worker de xdist: si dos workers comparten el nombre, el
+# `DROP DATABASE` de uno mata los tests del otro.
+BASE_TEMPORAL = f"turnos_test_migration_{os.environ.get('PYTEST_XDIST_WORKER', 'main')}"
 
 # Nombres exactos que produce el script. Se listan para que cada uno sea un test
 # con nombre propio y para detectar si el script deja de comprobar algo.

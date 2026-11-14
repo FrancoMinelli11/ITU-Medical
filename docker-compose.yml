@@ -53,12 +53,17 @@ services:
       # servicios por nombre; en el host, `.env` apunta a localhost con DB_PORT.
       TEST_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-turnos}_test
       TEST_REDIS_URL: redis://redis:6379/15
+      TEST_SMTP_HOST: mailpit
+      TEST_MAILPIT_URL: http://mailpit:8025
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
       - ./backend:/workspace/backend
       - ./alembic.ini:/workspace/alembic.ini:ro
       - ./scripts:/workspace/scripts:ro
+      # Sin esto `pytest` dentro del contenedor usaba la copia horneada en la
+      # imagen y se perdían los ajustes de loop asyncio de `pytest.ini`.
+      - ./pytest.ini:/workspace/pytest.ini:ro
     depends_on:
       db:
         condition: service_healthy

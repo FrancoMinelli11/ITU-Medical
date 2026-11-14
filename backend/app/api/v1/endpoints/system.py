@@ -1,3 +1,7 @@
+import asyncio
+import smtplib
+from typing import Any
+
 from fastapi import APIRouter
 from redis.asyncio import Redis
 from sqlalchemy import text
@@ -16,8 +20,32 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+def _probar_smtp() -> None:
+    with smtplib.SMTP(
+        settings.smtp_host, settings.smtp_port, timeout=settings.smtp_timeout_seconds
+    ) as smtp:
+        smtp.noop()
+
+
+async def _smtp_disponible() -> bool:
+    """Chequeo no bloqueante: un fallo de correo no puede tumbar `/ready`.
+
+    El envío es asíncrono (RNF-11) y su fallo no impide iniciar sesión ni
+    reservar. Si mailpit está caído, `checks.smtp` queda en `error` pero el
+    código de estado sigue siendo 200.
+    """
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(_probar_smtp),
+            timeout=settings.smtp_timeout_seconds + 0.5,
+        )
+    except (OSError, smtplib.SMTPException, TimeoutError):
+        return False
+    return True
+
+
 @router.get("/ready", summary="Readiness check")
-async def ready(session: SessionDep) -> dict[str, str]:
+async def ready(session: SessionDep) -> dict[str, Any]:
     try:
         await session.execute(text("SELECT 1"))
     # `OSError` cubre los fallos de resolución DNS y de conexión que asyncpg
@@ -38,4 +66,14 @@ async def ready(session: SessionDep) -> dict[str, str]:
     finally:
         await redis.aclose()
 
-    return {"status": "ready"}
+    # Los DB lógicos de rate limit y refresh viven en el mismo servidor Redis
+    # que se acaba de verificar; un chequeo aparte no agregaría información.
+    smtp_ok = await _smtp_disponible()
+    return {
+        "status": "ready",
+        "checks": {
+            "database": "ok",
+            "redis": "ok",
+            "smtp": "ok" if smtp_ok else "error",
+        },
+    }

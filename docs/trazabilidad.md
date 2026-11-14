@@ -1,7 +1,37 @@
-# Trazabilidad inicial
+# Trazabilidad
 
-Mapa de planificación. Se actualizará al cerrar cada hito con el archivo real y el
-test que cubre cada requisito.
+Mapa de planificación. Al cerrar cada hito se reemplazan los archivos previstos
+por los reales y se agrega el test que cubre cada requisito.
+
+## Estado implementado
+
+### H2.1 — auth-core
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-03 (login y control de roles) | `app/services/auth_service.py`, `app/api/v1/endpoints/auth.py`, `app/api/deps.py` | `test_auth_login.py`, `test_auth_cookies.py` |
+| RF-19 (operaciones de identidad) | `app/services/auditoria_service.py` | `test_auditoria.py` |
+| RF-27 (login: 5/DNI y 20/IP) | `app/core/rate_limit.py`, `app/core/config.py` | `test_rate_limits.py` |
+| RN-01, RN-30 (DNI de 7-8 dígitos) | `app/schemas/auth.py` (`LoginRequest`) + `CHECK dni_formato` (migración `0001`) | `test_auth_login.py`, `integration/test_migration.py` |
+| RN-29 (cambio obligatorio) | `app/api/deps.py::require_password_actualizada` | `test_auth_primer_ingreso.py` |
+| RN-37 (límites de login) | `core/rate_limit.py`, `core/config.py` | `test_rate_limits.py` |
+| RNF-01, RNF-03 (CSRF, permisos) | `app/core/csrf.py`, `app/api/deps.py::require_roles` | `test_auth_csrf.py`, `test_auth_cookies.py` |
+| P-05, P-06, P-07 | — | `test_auth_login.py` |
+| P-30 (operaciones de identidad) | — | `test_auditoria.py` |
+| P-33 (login con contraseña temporal) | — | `test_auth_primer_ingreso.py` |
+| P-36 (límite de intentos) | — | `test_rate_limits.py` |
+| P-44 (access 15 min, refresh 7 días) | `core/security.py`, `services/refresh_service.py` | `test_tokens.py` (el turno de las 23:30 es H4) |
+
+Decisiones con impacto en trazabilidad:
+
+| Decisión | Efecto | Dónde queda cubierto |
+|---|---|---|
+| **Q1 = A**: contraseña temporal = DNI literal | Excepción **documentada** a RN-28 para las cuentas creadas por recepción, porque RF-02, CU-13 y P-04 exigen que la primera credencial sea el DNI. RN-29 sigue vigente vía `debe_cambiar_password`. | `test_auth_primer_ingreso.py::test_login_con_password_temporal` |
+| **C1**: 401 uniforme en el login | Un DNI inexistente, una contraseña incorrecta y una cuenta deshabilitada devuelven lo mismo; la causa real solo queda en `AUDITORIA`. | `test_auth_login.py`, `test_auditoria.py` |
+| **C2**: el restablecimiento revoca todas las sesiones | `refresh_service.revocar_sesiones_usuario` (se usa en H2.3). | Pendiente en H2.3 |
+| **C3**: `/auth/me` responde 200 con `debe_cambiar_password` | El SPA distingue "sesión inválida" de "falta cambiar la contraseña". | `test_auth_primer_ingreso.py` |
+| Sin `slowapi` | `key_func` síncrona no puede leer el body y RN-37 cuenta intentos fallidos: se usan contadores propios en Redis. | `test_rate_limits.py` |
+| CSRF como dependencia global del router | Un endpoint nuevo queda protegido por defecto y `POST` a una ruta solo-`GET` sigue dando `405`. | `test_auth_csrf.py`, `test_health.py` |
 
 ## Requerimientos funcionales
 
@@ -38,17 +68,21 @@ test que cubre cada requisito.
 
 ## Plan de pruebas
 
-| P | Archivo previsto |
+| P | Archivo |
 |---|---|
-| P-01..P-07, P-31..P-36, P-41, P-44 | `backend/tests/integration/test_auth_*`, `test_rate_limits.py`, `test_zona_horaria.py` |
+| P-01..P-04, P-31, P-41 | `backend/tests/test_auth_registro.py`, `test_auth_verificacion.py` (H2.2) |
+| P-05..P-07, P-33, P-36 | `backend/tests/test_auth_login.py`, `test_auth_primer_ingreso.py`, `test_rate_limits.py` (H2.1) |
 | P-08..P-11, P-37, P-38, P-42 | `backend/tests/integration/test_turnos_reserva.py`, `test_turnos_concurrencia.py` |
 | P-12..P-16 | `backend/tests/integration/test_turnos_cancelacion.py` |
 | P-17..P-21 | `backend/tests/integration/test_turnos_llegada.py`, `test_turnos_orden.py`, `test_turnos_ausencia.py` |
 | P-22, P-23 | `backend/tests/integration/test_notas.py` |
 | P-24..P-26 | `backend/tests/integration/test_restricciones.py` |
 | P-27, P-28, P-40 | `backend/tests/integration/test_agenda_*.py` |
-| P-29, P-30 | `backend/tests/integration/test_permisos.py`, `test_auditoria.py` |
+| P-29 | `backend/tests/test_permisos.py` |
+| P-30 | `backend/tests/test_auditoria.py` (H2.1; cada hito suma sus acciones) |
+| P-32, P-34, P-35 | `backend/tests/test_auth_recuperacion.py` (H2.3; P-32 se difiere a H4) |
 | P-39, P-43 | `backend/tests/integration/test_scheduler_recordatorio.py`, `test_smtp_failure.py` |
+| P-44 | `backend/tests/test_tokens.py` (parcial, H2.1) + `test_zona_horaria.py` (H4) |
 | P-45 | `backend/tests/integration/test_backup_restore.py` |
 
 Tests complementarios por vacíos del plan original:

@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     rate_limit_storage_url: str = "redis://localhost:6379/1"
     arq_redis_url: str = "redis://localhost:6379/2"
+    refresh_redis_url: str = "redis://localhost:6379/3"
 
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
@@ -49,9 +50,24 @@ class Settings(BaseSettings):
     refresh_cookie_name: str = "refresh_token"
     csrf_cookie_name: str = "csrf_token"
     csrf_header_name: str = "X-CSRF-Token"
+    # El refresh solo se manda a /api/v1/auth; el CSRF a toda la API para que
+    # cualquier mutación pueda leerlo desde `document.cookie`.
+    refresh_cookie_path: str = "/api/v1/auth"
+    csrf_cookie_path: str = "/api/v1"
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
     cookie_domain: str | None = None
+
+    argon2_time_cost: int = 3
+    argon2_memory_cost: int = 65536
+    argon2_parallelism: int = 2
+    password_min_length: int = 10
+
+    rate_limit_login_dni: str = "5/15minutes"
+    rate_limit_login_ip: str = "20/15minutes"
+    rate_limit_password_reset: str = "3/hour"
+    rate_limit_verification_resend: str = "3/hour"
+    rate_limit_booking: str = "10/hour"
 
     smtp_host: str = "localhost"
     smtp_port: int = 1025
@@ -60,6 +76,8 @@ class Settings(BaseSettings):
     smtp_starttls: bool = False
     smtp_from: str = "no-reply@turnos.local"
     smtp_from_name: str = "Sistema de Turnos"
+    smtp_timeout_seconds: float = 2.0
+    mailpit_url: str = "http://localhost:8025"
     email_verification_token_expire_hours: int = 24
     password_reset_token_expire_hours: int = 1
     notification_max_retries: int = 3

@@ -66,12 +66,102 @@ Cualquier otra transición devuelve `409` con código `TRANSICION_INVALIDA`.
 
 ## 5. Autenticación y sesión
 
-1. `GET /auth/csrf` entrega el token CSRF.
-2. `POST /auth/login` valida DNI + contraseña y devuelve access token en el body.
+### 5.1 Flujo
+
+1. `GET /auth/csrf` entrega la cookie `csrf_token` (bootstrap del SPA, 204).
+2. `POST /auth/login` valida DNI + contraseña y devuelve el access token en el body.
 3. El refresh token va en cookie `httpOnly`, `SameSite=Lax`, `Secure` en producción.
 4. El SPA guarda el access token solo en memoria; al recargar llama a `/auth/refresh`.
-5. Las mutaciones envían `X-CSRF-Token`.
-6. Logout, cambio de contraseña y reutilización de refresh revocan la sesión.
+5. Las mutaciones envían `X-CSRF-Token` (double-submit contra la cookie).
+6. Logout, cambio de contraseña, restablecimiento y reutilización de refresh
+   revocan la sesión.
+
+### 5.2 Cookies
+
+| Cookie | `HttpOnly` | `Path` | Vida | Propósito |
+|---|---|---|---|---|
+| `refresh_token` | sí | `/api/v1/auth` | 7 días | Sesión renovable. |
+| `csrf_token` | no | `/api/v1` | 7 días | Double-submit legible por el SPA. |
+
+`Secure` sale de `COOKIE_SECURE` (`false` en desarrollo y tests, `true` en
+producción). Ninguna cookie se lee desde JavaScript salvo `csrf_token`, que es
+justamente el token que hay que repetir en el header.
+
+### 5.3 Tokens
+
+- **Access**: JWT HS256 con `sub`, `rol`, `sid` (familia de refresh), `iss`,
+  `aud`, `iat`, `exp` (15 min, UTC). Se verifica firma, issuer, audience y
+  expiración en cada request. Sin lista de revocación: un access emitido vive
+  como máximo 15 minutos.
+- **Refresh**: token opaco (`secrets.token_urlsafe`) con rotación en cada uso.
+  Se persiste **hasheado con SHA-256** en Redis (`REFRESH_REDIS_URL`, DB 3):
+  - `refresh:tok:<sha256>` → `{id_usuario, family, usado}`, TTL 7 días;
+  - `refresh:family:<uuid>` → `{id_usuario, revocada}`, mismo TTL;
+  - `refresh:user:<uuid>` → set de familias, para revocar todas juntas.
+  La rotación es un único `EVAL` de Lua: si el token ya estaba `usado`, la
+  familia entera se revoca y la respuesta es `401 SESION_INVALIDA`
+  (`REFRESH_REUTILIZADO` queda en `AUDITORIA`). La limpieza es solo por TTL.
+
+### 5.4 CSRF
+
+Se implementa como **dependencia global del router** (`api_router`), no como
+middleware: así el chequeo corre después del ruteo, un `POST` a una ruta
+solo-`GET` sigue dando `405` y todo endpoint nuevo queda protegido por defecto.
+
+Rutas exentas (no hay sesión todavía): `/auth/login`, `/auth/registro`,
+`/auth/recuperar-password`, `/auth/restablecer-password`,
+`/auth/verificar-email`, `/auth/reenviar-verificacion`. El resto de las
+mutaciones, incluido `/auth/refresh`, exigen `X-CSRF-Token` igual a la cookie;
+si falta o no coincide: `403 CSRF_INVALIDO` con `Cache-Control: no-store`.
+
+### 5.5 Rate limiting (RN-37)
+
+No se usa el decorador de `slowapi`: su `key_func` es síncrona, no puede leer el
+body (DNI y email viven ahí) y RN-37 cuenta **intentos fallidos**, no requests.
+Se usan contadores propios sobre `RATE_LIMIT_STORAGE_URL` (`INCR` + `EXPIRE` en
+un `EVAL`, ventana fija desde el primer intento):
+
+| Clave | Límite | Configurable con |
+|---|---|---|
+| DNI | 5 / 15 min | `RATE_LIMIT_LOGIN_DNI` |
+| IP | 20 / 15 min | `RATE_LIMIT_LOGIN_IP` |
+| Recuperación | 3 / hora | `RATE_LIMIT_PASSWORD_RESET` |
+| Reenvío de verificación | 3 / hora | `RATE_LIMIT_VERIFICATION_RESEND` |
+| Reserva de turnos | 10 / hora | `RATE_LIMIT_BOOKING` |
+
+El bloqueo se evalúa **antes** de verificar la contraseña: el intento siguiente
+devuelve `429 RATE_LIMIT_EXCEDIDO` con `Retry-After` y no gasta argon2id. Un
+login exitoso borra el contador del DNI.
+
+### 5.6 Primer ingreso (RN-29)
+
+Las cuentas creadas por recepción llevan `debe_cambiar_password = true` y su
+contraseña temporal es el **DNI literal** (decisión Q1 = A), exenta de RN-28.
+Mientras el flag siga en `true`:
+
+- `GET /auth/me`, `/auth/refresh` y `/auth/logout` responden normal;
+- el resto de los endpoints autenticados devuelve `403 CAMBIO_PASSWORD_REQUERIDO`
+  (dependencia `require_password_actualizada`).
+
+El flag se lee de la fila `USUARIO` en cada request, nunca del JWT.
+
+### 5.7 Permisos
+
+- El rol se valida en el servidor en cada endpoint (`require_roles`); ocultar
+  botones no cuenta.
+- Falta de credenciales o token inválido → `401` con `WWW-Authenticate`.
+- Rol insuficiente → `403 SIN_PERMISO`.
+- Cuenta deshabilitada: `401 CREDENCIALES_INVALIDAS` en el login (no confirma
+  que el DNI exista) y `403 CUENTA_DESHABILITADA` en una sesión ya abierta.
+
+### 5.8 Contraseñas
+
+`argon2id` con parámetros configurables (`ARGON2_TIME_COST`,
+`ARGON2_MEMORY_COST`, `ARGON2_PARALLELISM`). El login ejecuta argon2id
+**exactamente una vez en todos los caminos**, comparando contra un hash dummy
+cuando el DNI no existe: el tiempo de respuesta no enumera cuentas. La causa
+real del rechazo (`USUARIO_INEXISTENTE`, `PASSWORD_INCORRECTA`,
+`CUENTA_DESHABILITADA`) queda solo en `AUDITORIA`.
 
 ## 6. Notificaciones
 
@@ -87,6 +177,25 @@ Cualquier otra transición devuelve `409` con código `TRANSICION_INVALIDA`.
 Base `/api/v1`. Respuestas exitosas con el recurso directo o
 `{items, page, page_size, total, pages}`. Errores con RFC 7807
 (`application/problem+json`) y campo estable `code`.
+
+Implementado en H2.1 (auth-core):
+
+| Método y ruta | Auth | Éxito | Errores propios |
+|---|---|---|---|
+| `GET /health` | — | `200 {status: ok}` | — |
+| `GET /ready` | — | `200 {status, checks{database, redis, smtp}}` | `503 BASE_NO_DISPONIBLE`, `503 REDIS_NO_DISPONIBLE` |
+| `GET /auth/csrf` | — | `204` + cookie | — |
+| `POST /auth/login` | — | `200 {access_token, token_type, expires_in, usuario, debe_cambiar_password}` | `400 VALIDACION`, `401 CREDENCIALES_INVALIDAS`, `429 RATE_LIMIT_EXCEDIDO` |
+| `POST /auth/refresh` | cookie + CSRF | `200 {access_token, expires_in, usuario}` | `401 NO_AUTENTICADO`, `401 SESION_INVALIDA`, `403 CSRF_INVALIDO` |
+| `POST /auth/logout` | cookie + CSRF | `204` (idempotente) | `403 CSRF_INVALIDO` |
+| `GET /auth/me` | Bearer | `200 UsuarioOut` | `401 NO_AUTENTICADO`, `401 TOKEN_INVALIDO`, `403 CUENTA_DESHABILITADA` |
+
+`/auth/logout` no exige un access token válido a propósito: si la pestaña quedó
+abierta más de 15 minutos, un logout con `401` dejaría el refresh vivo y la
+sesión "reviviría" en la próxima recarga. Revoca la familia desde la cookie y
+limpia ambas cookies.
+
+Resto del contrato (H2.2 en adelante):
 
 | Método y ruta | Rol | Propósito |
 |---|---|---|
@@ -131,6 +240,10 @@ Base `/api/v1`. Respuestas exitosas con el recurso directo o
 
 - Backend: unitarios de dominio y servicios, integración contra Postgres real y
   mailpit. `pytest-xdist` por defecto; `@pytest.mark.serial` para concurrencia.
+- Cada worker de xdist corre contra su propia base (`turnos_test_<worker>`), su
+  propia DB de Redis y su propia base descartable para el test de migración; las
+  fixtures de sesión comparten un único event loop por worker
+  (`asyncio_default_fixture_loop_scope = session`).
 - Frontend: Vitest + Testing Library + `msw`.
 - CI: ruff, mypy, pytest, eslint, tsc, Vitest y build de Vite.
 - La migración se aplica en CI antes de los tests de integración.
@@ -157,7 +270,13 @@ Base `/api/v1`. Respuestas exitosas con el recurso directo o
   `docker compose exec api python scripts/seed.py`.
 - `/api/v1/ready` verifica conectividad (`SELECT 1` + `ping` a Redis), no el
   esquema: puede devolver 200 con la base sin migrar. Para el esquema, `alembic
-  check`.
+  check`. El chequeo de SMTP es informativo: si mailpit está caído,
+  `checks.smtp` queda en `error` y el estado sigue siendo 200, porque las
+  notificaciones son asíncronas (RNF-11).
+- Redis usa DB separadas por uso: `0` general, `1` rate limit, `2` ARQ,
+  `3` refresh tokens. En tests cada worker de xdist usa su propia DB lógica y su
+  propia base de PostgreSQL (`turnos_test_<worker>`), así un `FLUSHDB` o un
+  `TRUNCATE` no pisa a los demás workers.
 - `alembic upgrade head` es el único mecanismo de cambio de esquema.
 - `alembic check` debe reportar "No new upgrade operations detected" (modelos y
   migración sincronizados).

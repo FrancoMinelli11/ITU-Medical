@@ -7,11 +7,35 @@ las decisiones de diseño de la FASE 2, en [`docs/diseno.md`](docs/diseno.md).
 ## Estado
 
 - FASE 1: análisis cerrado.
-- FASE 2: diseño técnico y andamiaje (este hito).
-- FASE 3+: lógica de negocio, pendiente de aprobación.
+- FASE 2: diseño técnico y andamiaje (H1), Docker/CI (H1.5) y **H2.1 auth-core**
+  (login, refresh rotativo, CSRF, rate limiting, `/auth/me` y auditoría).
+- H2.2 (registro, verificación de correo y pacientes), H2.3 (recuperación y primer
+  ingreso) y H2.4 (frontend de auth) están pendientes de aprobación.
 
-El repositorio incluye modelos, migración inicial, contratos base y el entorno de
-desarrollo. **No incluye todavía la lógica funcional de turnos.**
+El repositorio incluye modelos, migración inicial, contratos base, autenticación y
+el entorno de desarrollo. **Todavía no incluye la lógica funcional de turnos.**
+
+## Autenticación
+
+| Paso | Llamada |
+|---|---|
+| Bootstrap CSRF | `GET /api/v1/auth/csrf` → cookie `csrf_token` (legible por el SPA) |
+| Login | `POST /api/v1/auth/login` `{dni, password}` → access token (15 min) en el body + cookie `refresh_token` httpOnly |
+| Renovar | `POST /api/v1/auth/refresh` con `X-CSRF-Token` → access nuevo, `refresh_token` y `csrf_token` rotados |
+| Perfil | `GET /api/v1/auth/me` con `Authorization: Bearer <access>` |
+| Logout | `POST /api/v1/auth/logout` con `X-CSRF-Token` → revoca la familia y borra cookies |
+
+El access token va **solo en memoria** del SPA (nunca `localStorage`). Toda mutación
+necesita `X-CSRF-Token` igual a la cookie; las rutas de entrada
+(`/auth/login`, `/auth/registro`, `/auth/recuperar-password`,
+`/auth/restablecer-password`, `/auth/verificar-email`,
+`/auth/reenviar-verificacion`) están exentas.
+
+```bash
+curl.exe -i -c cookies.txt http://localhost:8000/api/v1/auth/csrf
+curl.exe -i -b cookies.txt -c cookies.txt -X POST http://localhost:8000/api/v1/auth/login ^
+  -H "Content-Type: application/json" -d "{\"dni\":\"20000001\",\"password\":\"Paciente123!\"}"
+```
 
 ## Requisitos
 
@@ -106,16 +130,23 @@ pnpm build
 
 ## Tests
 
-`pytest` corre igual desde el host y desde el contenedor (`pytest.ini` se copia
-a la imagen), incluidos los 21 checks de integración de la migración. La suite
-de integración necesita `TEST_DATABASE_URL`; `backend/tests/conftest.py` carga
-`.env`, así que:
+`pytest` corre igual desde el host y desde el contenedor (`pytest.ini` se copia a
+la imagen y además se monta en `api` para que el contenedor use el del repo),
+incluidos los 21 checks de integración de la migración. La suite de integración
+necesita `TEST_DATABASE_URL` y `TEST_REDIS_URL`; `backend/tests/conftest.py`
+carga `.env`, así que:
 
 - **host**: apunta a `localhost:${DB_PORT}` (por defecto `5433`) y usa el
   PostgreSQL de Compose;
 - **contenedor `api`**: Compose redefine la variable a `db:5432` (red interna);
 - **CI**: no hay `.env`, así que se usa el `DATABASE_URL` del job con el service
-  de Postgres.
+  de Postgres y `redis`.
+
+Cada worker de xdist crea su propia base (`turnos_test_<worker>`), usa su propia
+DB lógica de Redis y su propia base descartable para el test de migración, así que
+`pytest -n auto` es seguro. Las fixtures de sesión comparten un único event loop
+por worker: el engine async y los clientes Redis se reutilizan sin conexiones
+atadas a un loop cerrado.
 
 Ningún test se saltea por defecto. Se skipean solo si el PostgreSQL de
 `TEST_DATABASE_URL` no está levantado (por ejemplo, con Compose caído), y el

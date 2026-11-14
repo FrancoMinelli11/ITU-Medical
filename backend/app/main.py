@@ -40,6 +40,9 @@ def create_app() -> FastAPI:
     )
     app.state.request_id_header = settings.request_id_header
 
+    # El orden de `add_middleware` es inverso al de ejecución: el último
+    # agregado corre primero. Resultado (afuera → adentro):
+    # RequestID → CORS → TrustedHost → router.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts_list)
     app.add_middleware(
         CORSMiddleware,
@@ -47,7 +50,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=[settings.request_id_header],
+        expose_headers=[settings.request_id_header, "Retry-After"],
     )
     app.add_middleware(RequestIDMiddleware)
 

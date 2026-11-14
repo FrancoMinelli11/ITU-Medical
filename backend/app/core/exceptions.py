@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 from starlette import status
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.core.cookies import clear_auth_cookies
+
 logger = structlog.get_logger(__name__)
 
 
@@ -19,6 +21,8 @@ class ApiError(Exception):
         title: str,
         detail: str,
         errors: list[dict[str, Any]] | None = None,
+        headers: dict[str, str] | None = None,
+        limpiar_cookies: bool = False,
     ) -> None:
         super().__init__(detail)
         self.status_code = status_code
@@ -26,6 +30,11 @@ class ApiError(Exception):
         self.title = title
         self.detail = detail
         self.errors = errors or []
+        self.headers = headers or {}
+        # Los handlers de excepción construyen una respuesta nueva: las cookies
+        # que se hayan puesto en el `Response` inyectado se pierden. Este flag
+        # permite que el handler borre la sesión en errores de refresh.
+        self.limpiar_cookies = limpiar_cookies
 
 
 def problem_response(
@@ -62,14 +71,18 @@ def problem_response(
 
 async def api_error_handler(request: Request, exc: Exception) -> JSONResponse:
     error = cast(ApiError, exc)
-    return problem_response(
+    response = problem_response(
         request,
         error.status_code,
         error.code,
         error.title,
         error.detail,
         error.errors,
+        headers=error.headers or None,
     )
+    if error.limpiar_cookies:
+        clear_auth_cookies(response)
+    return response
 
 
 async def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
