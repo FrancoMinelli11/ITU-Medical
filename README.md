@@ -7,10 +7,12 @@ las decisiones de diseño de la FASE 2, en [`docs/diseno.md`](docs/diseno.md).
 ## Estado
 
 - FASE 1: análisis cerrado.
-- FASE 2: diseño técnico y andamiaje (H1), Docker/CI (H1.5) y **H2.1 auth-core**
-  (login, refresh rotativo, CSRF, rate limiting, `/auth/me` y auditoría).
-- H2.2 (registro, verificación de correo y pacientes), H2.3 (recuperación y primer
-  ingreso) y H2.4 (frontend de auth) están pendientes de aprobación.
+- FASE 2: diseño técnico y andamiaje (H1), Docker/CI (H1.5), **H2.1 auth-core**
+  (login, refresh rotativo, CSRF, rate limiting, `/auth/me` y auditoría) y
+  **H2.2 registro/verificación/pacientes** (alta web y por recepción, correo de
+  verificación asíncrono, CRUD de pacientes).
+- H2.3 (recuperación y primer ingreso) y H2.4 (frontend de auth) están pendientes
+  de aprobación.
 
 El repositorio incluye modelos, migración inicial, contratos base, autenticación y
 el entorno de desarrollo. **Todavía no incluye la lógica funcional de turnos.**
@@ -24,6 +26,9 @@ el entorno de desarrollo. **Todavía no incluye la lógica funcional de turnos.*
 | Renovar | `POST /api/v1/auth/refresh` con `X-CSRF-Token` → access nuevo, `refresh_token` y `csrf_token` rotados |
 | Perfil | `GET /api/v1/auth/me` con `Authorization: Bearer <access>` |
 | Logout | `POST /api/v1/auth/logout` con `X-CSRF-Token` → revoca la familia y borra cookies |
+| Registro web | `POST /api/v1/auth/registro` `{dni, email, password, nombre, apellido, ...}` → `201`; envía el correo de verificación (Mailpit en desarrollo) |
+| Verificar correo | `POST /api/v1/auth/verificar-email` `{token}` → `200`; reenvío con `POST /api/v1/auth/reenviar-verificacion` `{email}` (respuesta genérica, 3/hora) |
+| Pacientes | `GET/POST /api/v1/pacientes` y `GET/PATCH /api/v1/pacientes/{id}` con rol recepción/administrador |
 
 El access token va **solo en memoria** del SPA (nunca `localStorage`). Toda mutación
 necesita `X-CSRF-Token` igual a la cookie; las rutas de entrada
@@ -149,8 +154,10 @@ por worker: el engine async y los clientes Redis se reutilizan sin conexiones
 atadas a un loop cerrado.
 
 Ningún test se saltea por defecto. Se skipean solo si el PostgreSQL de
-`TEST_DATABASE_URL` no está levantado (por ejemplo, con Compose caído), y el
-motivo aparece en el resumen con `pytest -rs`.
+`TEST_DATABASE_URL` no está levantado (por ejemplo, con Compose caído) o si el
+SMTP de Mailpit (`TEST_SMTP_HOST:TEST_SMTP_PORT`) no responde —lo necesitan los
+tests de `test_notificaciones.py`—, y el motivo aparece en el resumen con
+`pytest -rs`.
 
 
 ## Arquitectura
@@ -162,7 +169,8 @@ frontend (React + TS)  ->  /api/v1  ->  FastAPI  ->  PostgreSQL
 ```
 
 - `backend/app/api/v1`: endpoints.
-- `backend/app/services`: reglas de negocio (FASE 3).
+- `backend/app/services`: reglas de negocio (auth y pacientes implementados; el
+  resto llega en la FASE 3).
 - `backend/app/domain`: estados, transiciones y orden de atención.
 - `backend/app/db/models`: modelo de datos.
 - `backend/alembic`: migraciones, incluidas las exclusion constraints.

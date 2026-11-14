@@ -22,6 +22,26 @@ por los reales y se agrega el test que cubre cada requisito.
 | P-36 (límite de intentos) | — | `test_rate_limits.py` |
 | P-44 (access 15 min, refresh 7 días) | `core/security.py`, `services/refresh_service.py` | `test_tokens.py` (el turno de las 23:30 es H4) |
 
+### H2.2 — registro, verificación y pacientes
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-01 (alta web, correo único y verificación) | `app/services/paciente_service.py::registrar_web`, `app/api/v1/endpoints/auth.py` | `test_auth_registro.py` |
+| RF-02 (alta desde recepción) | `app/services/paciente_service.py::crear_desde_recepcion`, `app/api/v1/endpoints/pacientes.py` | `test_pacientes.py` |
+| RF-19 (auditoría de las nuevas operaciones) | `Accion.ALTA_PACIENTE_WEB`, `ALTA_PACIENTE_RECEPCION`, `MODIFICACION_PACIENTE`, `VERIFICACION_EMAIL_ENVIADA`, `EMAIL_VERIFICADO` | `test_auth_registro.py`, `test_auth_verificacion.py`, `test_pacientes.py` |
+| RF-20, CU-11 (verificar correo) | `app/services/verificacion_service.py`, `POST /auth/verificar-email` | `test_auth_verificacion.py` |
+| RF-22, RNF-11 (correo asíncrono e idempotente) | `app/services/notificacion_service.py`, `app/workers/notificaciones.py`, `app/services/email_service.py` | `test_notificaciones.py`, `test_workers.py` |
+| RN-28 (política de contraseñas) | `app/schemas/auth.py::PasswordFuerte` | `test_auth_registro.py` |
+| RN-29 (cambio obligatorio en el primer ingreso) | `app/api/deps.py::require_roles` + `require_password_actualizada` | `test_pacientes.py::test_cuenta_de_recepcion_usa_el_dni_y_bloquea_el_resto` |
+| RN-31 (tokens hasheados, un solo uso) | `verificacion_service.generar/consumir` (`sha256_hex`) | `test_auth_registro.py`, `test_auth_verificacion.py` |
+| RN-32 (un token vigente; no duplicar notificación) | `verificacion_service.generar` invalida el anterior; `enviar_email` no reenvía una fila `ENVIADA` | `test_auth_verificacion.py::test_reenvio_invalida_el_token_anterior`, `test_notificaciones.py::test_worker_es_idempotente` |
+| RN-37 (reenvío: 3 por correo por hora) | `verificacion_service.reenviar` con `RateLimiter` | `test_auth_verificacion.py::test_reenvio_tiene_rate_limit` |
+| RNF-03 (permisos server-side en `/pacientes`) | `pacientes.py::StaffDep` | `test_pacientes.py` |
+| P-01, P-02, P-03, P-31 | — | `test_auth_registro.py` |
+| P-04 (alta desde recepción y primer ingreso) | — | `test_pacientes.py` |
+| P-41 (token válido/expirado/usado/inexistente y reenvío) | — | `test_auth_verificacion.py` |
+| P-43 (fallo de SMTP: la operación sigue y la fila queda `FALLIDA`) | — | `test_notificaciones.py` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |
@@ -29,7 +49,7 @@ Decisiones con impacto en trazabilidad:
 | **Q1 = A**: contraseña temporal = DNI literal | Excepción **documentada** a RN-28 para las cuentas creadas por recepción, porque RF-02, CU-13 y P-04 exigen que la primera credencial sea el DNI. RN-29 sigue vigente vía `debe_cambiar_password`. | `test_auth_primer_ingreso.py::test_login_con_password_temporal` |
 | **C1**: 401 uniforme en el login | Un DNI inexistente, una contraseña incorrecta y una cuenta deshabilitada devuelven lo mismo; la causa real solo queda en `AUDITORIA`. | `test_auth_login.py`, `test_auditoria.py` |
 | **C2**: el restablecimiento revoca todas las sesiones | `refresh_service.revocar_sesiones_usuario` (se usa en H2.3). | Pendiente en H2.3 |
-| **C3**: `/auth/me` responde 200 con `debe_cambiar_password` | El SPA distingue "sesión inválida" de "falta cambiar la contraseña". | `test_auth_primer_ingreso.py` |
+| **C3**: `/auth/me` responde 200 con `debe_cambiar_password` | El SPA distingue "sesión inválida" de "falta cambiar la contraseña"; con el flag activo el resto de los endpoints devuelve `403 CAMBIO_PASSWORD_REQUERIDO` (validado también e2e sobre `/pacientes`). | `test_auth_primer_ingreso.py`, `test_pacientes.py` |
 | Sin `slowapi` | `key_func` síncrona no puede leer el body y RN-37 cuenta intentos fallidos: se usan contadores propios en Redis. | `test_rate_limits.py` |
 | CSRF como dependencia global del router | Un endpoint nuevo queda protegido por defecto y `POST` a una ruta solo-`GET` sigue dando `405`. | `test_auth_csrf.py`, `test_health.py` |
 
@@ -70,7 +90,7 @@ Decisiones con impacto en trazabilidad:
 
 | P | Archivo |
 |---|---|
-| P-01..P-04, P-31, P-41 | `backend/tests/test_auth_registro.py`, `test_auth_verificacion.py` (H2.2) |
+| P-01..P-04, P-31, P-41, P-43 | `backend/tests/test_auth_registro.py`, `test_auth_verificacion.py`, `test_pacientes.py`, `test_notificaciones.py` (H2.2) |
 | P-05..P-07, P-33, P-36 | `backend/tests/test_auth_login.py`, `test_auth_primer_ingreso.py`, `test_rate_limits.py` (H2.1) |
 | P-08..P-11, P-37, P-38, P-42 | `backend/tests/integration/test_turnos_reserva.py`, `test_turnos_concurrencia.py` |
 | P-12..P-16 | `backend/tests/integration/test_turnos_cancelacion.py` |

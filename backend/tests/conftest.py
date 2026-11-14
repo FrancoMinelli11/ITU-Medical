@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import date
 from pathlib import Path
@@ -80,6 +81,9 @@ REDIS_TEST = _redis_por_worker(REDIS_TEST)
 os.environ["REDIS_URL"] = REDIS_TEST
 os.environ["RATE_LIMIT_STORAGE_URL"] = REDIS_TEST
 os.environ["REFRESH_REDIS_URL"] = REDIS_TEST
+# La cola de ARQ también al Redis de test: así los jobs de notificación se
+# pueden inspeccionar (y `FLUSHDB` los limpia junto con el resto del estado).
+os.environ["ARQ_REDIS_URL"] = REDIS_TEST
 
 os.environ["APP_ENV"] = "test"
 os.environ["SMTP_HOST"] = os.environ.get("TEST_SMTP_HOST", "localhost")
@@ -288,6 +292,54 @@ class SesionAuth:
 @pytest.fixture
 def sesion(client: AsyncClient) -> SesionAuth:
     return SesionAuth(client)
+
+
+class BuzonDeCorreo:
+    """Captura los envíos en lugar de tocar SMTP ni la cola de ARQ.
+
+    Sustituye `notificacion_service.despachar` durante el test. Sirve para leer
+    el token plano del enlace: en la base solo queda el hash (RN-31), así que el
+    único lugar donde el token completo existe es el cuerpo del correo.
+    """
+
+    ASUNTO_VERIFICACION = "Verificá tu correo para reservar turnos"
+
+    def __init__(self) -> None:
+        self.envios: list[dict[str, str]] = []
+
+    def registrar(self, *, destinatario: str, asunto: str, cuerpo: str) -> None:
+        self.envios.append({"destinatario": destinatario, "asunto": asunto, "cuerpo": cuerpo})
+
+    def de(self, email: str, asunto: str | None = None) -> list[dict[str, str]]:
+        return [
+            envio
+            for envio in self.envios
+            if envio["destinatario"] == email and (asunto is None or envio["asunto"] == asunto)
+        ]
+
+    def token(self, email: str) -> str:
+        """Token del último correo de verificación enviado a `email`."""
+        envios = self.de(email, self.ASUNTO_VERIFICACION)
+        assert envios, f"no se envió correo de verificación a {email}"
+        encontrado = re.search(r"token=([A-Za-z0-9_\-]+)", envios[-1]["cuerpo"])
+        assert encontrado, "el cuerpo del correo no incluye el enlace con token"
+        return encontrado.group(1)
+
+
+@pytest.fixture
+def buzon(monkeypatch: pytest.MonkeyPatch) -> BuzonDeCorreo:
+    from app.services import notificacion_service
+
+    buzon = BuzonDeCorreo()
+
+    async def _despachar(
+        notificacion: object, *, destinatario: str, asunto: str, cuerpo: str
+    ) -> bool:
+        buzon.registrar(destinatario=destinatario, asunto=asunto, cuerpo=cuerpo)
+        return True
+
+    monkeypatch.setattr(notificacion_service, "despachar", _despachar)
+    return buzon
 
 
 @pytest.fixture

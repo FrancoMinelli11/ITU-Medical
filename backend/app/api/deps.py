@@ -81,7 +81,12 @@ CurrentUser = Annotated[Usuario, Depends(get_current_user)]
 
 
 def require_roles(*roles: RolUsuario) -> Callable[..., Awaitable[Usuario]]:
-    """Valida el rol en el servidor, no alcanza con ocultar el botón (RNF-03)."""
+    """Valida el rol en el servidor, no alcanza con ocultar el botón (RNF-03).
+
+    Además exige que la contraseña ya esté actualizada (C3): las cuentas creadas
+    por recepción no pueden usar ningún endpoint de negocio antes del primer
+    ingreso. Los endpoints de `/auth` usan `CurrentUser` y quedan afuera.
+    """
 
     async def _dependencia(usuario: CurrentUser) -> Usuario:
         if usuario.rol not in roles:
@@ -91,7 +96,7 @@ def require_roles(*roles: RolUsuario) -> Callable[..., Awaitable[Usuario]]:
                 "Sin permiso",
                 "No tenés permisos para realizar esta operación.",
             )
-        return usuario
+        return await require_password_actualizada(usuario)
 
     return _dependencia
 

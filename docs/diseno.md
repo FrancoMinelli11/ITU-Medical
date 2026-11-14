@@ -163,6 +163,27 @@ cuando el DNI no existe: el tiempo de respuesta no enumera cuentas. La causa
 real del rechazo (`USUARIO_INEXISTENTE`, `PASSWORD_INCORRECTA`,
 `CUENTA_DESHABILITADA`) queda solo en `AUDITORIA`.
 
+### 5.9 Registro y verificación de correo (RF-01, RF-20, RN-31, RN-32)
+
+- `POST /auth/registro` crea `USUARIO` (rol `PACIENTE`, `email_verificado =
+  false`) y `PACIENTE` en **una sola transacción**. Si el DNI o el correo ya
+  existen responde `409 DNI_DUPLICADO` / `409 EMAIL_DUPLICADO`.
+- El token de verificación es opaco y se guarda **hasheado** (SHA-256), con
+  expiración de 24 h. Cada emisión marca como usado el token anterior del mismo
+  usuario: solo hay uno vigente (RN-32).
+- La fila de `NOTIFICACION` se crea en la misma transacción; el encolado en ARQ
+  ocurre **después del commit** y es *best effort*: si Redis o SMTP fallan, la
+  cuenta queda creada y la notificación en `PENDIENTE`/`FALLIDA` (RNF-11).
+- `POST /auth/verificar-email` consume el token (`400 TOKEN_INVALIDO`,
+  `TOKEN_USADO` o `TOKEN_EXPIRADO`) y marca `email_verificado = true`.
+- `POST /auth/reenviar-verificacion` responde **siempre** `202` con el mismo
+  mensaje, exista o no la cuenta, y aplica RN-37 (3 por correo por hora).
+- Un paciente sin verificar **puede iniciar sesión**, pero no reservar turnos
+  (la reserva se implementa en H3 y valida `email_verificado`).
+- El alta desde recepción (`POST /pacientes`) no envía correo: marca
+  `email_verificado = true`, usa el DNI como contraseña temporal y exige el
+  cambio en el primer ingreso (RF-02, RN-29).
+
 ## 6. Notificaciones
 
 - Se persisten en `notificacion` antes de encolarse.
@@ -171,6 +192,18 @@ real del rechazo (`USUARIO_INEXISTENTE`, `PASSWORD_INCORRECTA`,
 - El fallo de SMTP no revierte la operación de negocio.
 - `RECORDATORIO_24H` solo se crea si el turno tiene al menos 23 h 30 min de
   anticipación.
+
+Implementado en H2.2:
+
+- `app/services/notificacion_service.py`: `crear` (fila, sin commit),
+  `despachar` (encola `enviar_email` en ARQ y **nunca** lanza) y los cuerpos de
+  verificación y recuperación.
+- `app/workers/notificaciones.py::enviar_email`: incrementa `intentos`, envía
+  por SMTP en un hilo aparte y deja la fila `ENVIADA` o `FALLIDA`. Si ya está
+  `ENVIADA` no reenvía (idempotencia). Ante error con intentos disponibles lanza
+  `Retry(defer=...)` para que ARQ reprograme el job.
+- `app/services/email_service.py`: SMTP directo (`smtplib`), compatible con
+  Mailpit en desarrollo y con STARTTLS/credenciales en producción.
 
 ## 7. API
 
@@ -195,20 +228,29 @@ abierta más de 15 minutos, un logout con `401` dejaría el refresh vivo y la
 sesión "reviviría" en la próxima recarga. Revoca la familia desde la cookie y
 limpia ambas cookies.
 
-Resto del contrato (H2.2 en adelante):
+Implementado en H2.2 (registro, verificación y pacientes):
+
+| Método y ruta | Auth | Éxito | Errores propios |
+|---|---|---|---|
+| `POST /auth/registro` | — (sin CSRF) | `201 PacienteOut` | `400 VALIDACION`, `409 DNI_DUPLICADO`, `409 EMAIL_DUPLICADO` |
+| `POST /auth/verificar-email` | — (sin CSRF) | `200 {email_verificado, mensaje}` | `400 TOKEN_INVALIDO`, `400 TOKEN_USADO`, `400 TOKEN_EXPIRADO` |
+| `POST /auth/reenviar-verificacion` | — (sin CSRF) | `202 {mensaje}` (genérico) | `400 VALIDACION`, `429 RATE_LIMIT_EXCEDIDO` |
+| `GET /pacientes` | Recepción/Admin + CSRF n/a | `200 {items, page, page_size, total, pages}` | `401 NO_AUTENTICADO`, `403 SIN_PERMISO`, `403 CAMBIO_PASSWORD_REQUERIDO` |
+| `POST /pacientes` | Recepción/Admin + CSRF | `201 PacienteOut` | `409 DNI_DUPLICADO`, `409 EMAIL_DUPLICADO` |
+| `GET /pacientes/{id}` | Recepción/Admin | `200 PacienteOut` | `404 PACIENTE_NO_ENCONTRADO` |
+| `PATCH /pacientes/{id}` | Recepción/Admin + CSRF | `200 PacienteOut` | `400 VALIDACION`, `409 EMAIL_DUPLICADO`, `404 PACIENTE_NO_ENCONTRADO` |
+
+Resto del contrato (H2.3 en adelante):
 
 | Método y ruta | Rol | Propósito |
 |---|---|---|
 | `GET /health`, `GET /ready` | Público | Salud y readiness. |
 | `GET /auth/csrf` | Público | Bootstrap CSRF. |
-| `POST /auth/registro` | Público | Alta web de paciente. |
 | `POST /auth/login` | Público | Login por DNI. |
 | `POST /auth/refresh`, `/auth/logout` | Sesión | Rotación/cierre. |
 | `GET /auth/me` | Autenticado | Perfil. |
-| `POST /auth/verificar-email`, `/auth/reenviar-verificacion` | Público | Verificación. |
 | `POST /auth/recuperar-password`, `/auth/restablecer-password` | Público | Recuperación. |
 | `POST /auth/cambiar-password`, `/auth/primer-ingreso` | Autenticado | Contraseña. |
-| `GET/POST /pacientes`, `GET/PATCH /pacientes/{id}` | Recepción/Admin | Pacientes. |
 | `GET /pacientes/{id}/turnos` | Recepción/Admin/Paciente | Historial. |
 | `GET/POST/PATCH /pacientes/{id}/restricciones` | Recepción/Admin | Usuario rojo. |
 | `GET/POST/PATCH /especialidades` | Autenticado/Admin | Catálogo. |

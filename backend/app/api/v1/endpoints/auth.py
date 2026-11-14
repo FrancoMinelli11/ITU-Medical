@@ -1,4 +1,4 @@
-"""Endpoints de identidad y sesión (RF-03, RF-27, RN-29, RN-30, RN-37)."""
+"""Endpoints de identidad y sesión (RF-01, RF-03, RF-20, RF-27, RN-29, RN-30, RN-37)."""
 
 from __future__ import annotations
 
@@ -12,8 +12,26 @@ from app.core.cookies import clear_auth_cookies, set_csrf_cookie, set_refresh_co
 from app.core.exceptions import ApiError
 from app.core.security import create_access_token, generate_csrf_token
 from app.db.models.usuario import Usuario
-from app.schemas.auth import LoginRequest, LoginResponse, RefreshResponse, UsuarioOut
-from app.services import auditoria_service, auth_service, refresh_service
+from app.schemas.auth import (
+    LoginRequest,
+    LoginResponse,
+    MensajeResponse,
+    ReenviarVerificacionRequest,
+    RefreshResponse,
+    RegistroRequest,
+    UsuarioOut,
+    VerificacionResponse,
+    VerificarEmailRequest,
+)
+from app.schemas.paciente import PacienteOut
+from app.services import (
+    auditoria_service,
+    auth_service,
+    notificacion_service,
+    paciente_service,
+    refresh_service,
+    verificacion_service,
+)
 from app.services.auditoria_service import Accion
 from app.services.refresh_service import EstadoRotacion
 
@@ -41,6 +59,65 @@ def _sesion_invalida() -> ApiError:
 )
 async def obtener_csrf(response: Response) -> None:
     set_csrf_cookie(response, generate_csrf_token())
+
+
+@router.post(
+    "/registro",
+    response_model=PacienteOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Registro web de paciente",
+)
+async def registro(
+    payload: RegistroRequest,
+    request: Request,
+    session: SessionDep,
+) -> PacienteOut:
+    """RF-01: crea la cuenta sin verificar y encola el correo de verificación.
+
+    El paciente puede iniciar sesión de inmediato, pero no reservar turnos hasta
+    confirmar el enlace (RN-27).
+    """
+    paciente, notificacion, asunto, cuerpo = await paciente_service.registrar_web(
+        session, payload=payload, request=request
+    )
+    await notificacion_service.despachar(
+        notificacion, destinatario=paciente.email, asunto=asunto, cuerpo=cuerpo
+    )
+    return paciente
+
+
+@router.post(
+    "/verificar-email",
+    response_model=VerificacionResponse,
+    summary="Confirmar el correo desde el enlace del correo",
+)
+async def verificar_email(
+    payload: VerificarEmailRequest, request: Request, session: SessionDep
+) -> VerificacionResponse:
+    usuario = await verificacion_service.consumir(session, token=payload.token, request=request)
+    return VerificacionResponse(
+        email_verificado=usuario.email_verificado,
+        mensaje="Correo verificado. Ya podés reservar turnos.",
+    )
+
+
+@router.post(
+    "/reenviar-verificacion",
+    response_model=MensajeResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Reenviar el correo de verificación",
+)
+async def reenviar_verificacion(
+    payload: ReenviarVerificacionRequest,
+    request: Request,
+    session: SessionDep,
+    redis: RateLimitRedisDep,
+) -> MensajeResponse:
+    """Respuesta genérica siempre: no confirma si el correo existe o ya está verificado."""
+    await verificacion_service.reenviar(session, email=payload.email, redis=redis, request=request)
+    return MensajeResponse(
+        mensaje="Si el correo corresponde a una cuenta sin verificar, te enviamos un nuevo enlace."
+    )
 
 
 @router.post("/login", response_model=LoginResponse, summary="Iniciar sesión")

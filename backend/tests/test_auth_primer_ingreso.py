@@ -47,7 +47,7 @@ async def test_me_responde_200_con_el_flag(client, sesion, fabrica) -> None:
 
 
 async def test_dependencia_bloquea_el_resto_de_endpoints(fabrica) -> None:
-    """El 403 e2e sobre `/pacientes` llega en H2.2, cuando exista el endpoint."""
+    """El mismo 403 se ve e2e contra `/pacientes` en `test_pacientes.py`."""
     usuario = await fabrica.crear(password=None, debe_cambiar_password=True)
 
     with pytest.raises(ApiError) as excinfo:
