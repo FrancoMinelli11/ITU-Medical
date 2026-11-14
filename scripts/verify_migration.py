@@ -436,7 +436,22 @@ async def main() -> int:
     if args.url:
         dsn = args.url.replace("+asyncpg", "")
     else:
-        import pgserver
+        # `pgserver` no se distribuye con la aplicación y además no puede correr
+        # como root dentro del contenedor: en vez de fallar con un traceback de
+        # import, se explica cómo continuar.
+        try:
+            import pgserver
+        except ModuleNotFoundError:
+            print(
+                "Error: pgserver no está instalado y no se pasó --url.\n"
+                "Opciones:\n"
+                "  1. Pasar una URL explícita: --url postgresql://user:pass@host:port/db\n"
+                "  2. Correr la suite equivalente:\n"
+                "     pytest backend/tests/integration/test_migration.py\n"
+                "     (usa TEST_DATABASE_URL apuntando a un PostgreSQL descartable)",
+                file=sys.stderr,
+            )
+            return 1
 
         servidor = pgserver.get_server(tempfile.mkdtemp(prefix="pgverify_"), cleanup_mode="delete")
         dsn = servidor.get_uri()
