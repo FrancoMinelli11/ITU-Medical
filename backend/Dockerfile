@@ -19,6 +19,10 @@ RUN cd backend && uv sync --frozen
 COPY backend ./backend
 COPY alembic.ini ./alembic.ini
 COPY scripts ./scripts
+# La configuración de pytest (asyncio_mode, markers, pythonpath) vive en la raíz
+# del repo; sin este COPY el `pytest` del contenedor no la veía y los tests async
+# fallaban dentro de la imagen aunque pasaran desde el host.
+COPY pytest.ini ./pytest.ini
 
 ENV PATH="/opt/venv/bin:${PATH}"
 
