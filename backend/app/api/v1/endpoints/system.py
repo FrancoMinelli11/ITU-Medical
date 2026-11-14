@@ -20,7 +20,10 @@ async def health() -> dict[str, str]:
 async def ready(session: SessionDep) -> dict[str, str]:
     try:
         await session.execute(text("SELECT 1"))
-    except SQLAlchemyError as exc:
+    # `OSError` cubre los fallos de resolución DNS y de conexión que asyncpg
+    # levanta antes de que SQLAlchemy los envuelva (p. ej. `socket.gaierror`
+    # cuando el contenedor de la base está detenido).
+    except (SQLAlchemyError, OSError) as exc:
         raise ApiError(
             503, "BASE_NO_DISPONIBLE", "Servicio no disponible", "La base de datos no responde."
         ) from exc
