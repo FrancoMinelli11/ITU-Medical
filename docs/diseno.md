@@ -136,13 +136,28 @@ Base `/api/v1`. Respuestas exitosas con el recurso directo o
 - La migración se aplica en CI antes de los tests de integración.
 - `scripts/verify_migration.py` valida el esquema contra PostgreSQL real:
   exclusion constraints por médico y paciente, CHECK de DNI y duración,
-  unicidad parcial de notificaciones y de restricción activa, y el ciclo
-  `downgrade base` + `upgrade head`. Corre en CI y **borra el esquema** de la
-  base indicada.
+  unicidad parcial de notificaciones y de restricción activa, inmutabilidad y
+  zona horaria de `rango_turno`, y el ciclo `downgrade base` + `upgrade head`.
+  Son 21 comprobaciones. Corre en CI y **borra el esquema** de la base indicada,
+  por lo que dentro de Compose debe apuntarse a una base descartable, nunca a
+  `turnos`:
+  `python scripts/verify_migration.py --url postgresql://postgres:postgres@db:5432/turnos_verify`.
+- arq 0.28 arma el `Worker` con `WorkerSettings.__dict__`, sin recorrer la MRO.
+  Una subclase que solo declare `cron_jobs` pierde `functions` y
+  `redis_settings` heredados, arranca con `RedisSettings()` por defecto
+  (`localhost:6379`) y entra en crash loop. Por eso `scheduler.WorkerSettings`
+  declara `functions` y `redis_settings` de forma explícita en vez de heredar.
+  `backend/tests/test_workers.py` lo cubre como regresión.
 
 ## 10. Operación
 
 - `docker compose up -d` levanta api, worker, scheduler, web, db, redis y mailpit.
+- Compose **no** aplica migraciones ni seed al arrancar. Después del primer
+  `up`: `docker compose exec api alembic upgrade head` y
+  `docker compose exec api python scripts/seed.py`.
+- `/api/v1/ready` verifica conectividad (`SELECT 1` + `ping` a Redis), no el
+  esquema: puede devolver 200 con la base sin migrar. Para el esquema, `alembic
+  check`.
 - `alembic upgrade head` es el único mecanismo de cambio de esquema.
 - `alembic check` debe reportar "No new upgrade operations detected" (modelos y
   migración sincronizados).
