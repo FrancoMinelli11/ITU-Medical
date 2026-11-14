@@ -43,14 +43,18 @@ bind mount del código no lo tapa. Al cambiar dependencias:
 docker compose build api worker scheduler
 ```
 
-Credenciales del seed de desarrollo:
+Credenciales del seed de desarrollo (escenario S-14, todos con email verificado):
 
 | Rol | Email | Contraseña |
 |---|---|---|
 | Administrador | `admin@turnos.local` | `Admin12345!` |
-| Recepción | `recepcion@turnos.local` | `Recepcion123!` |
-| Médico | `medico@turnos.local` | `Medico12345!` |
-| Paciente | `paciente@turnos.local` | `Paciente123!` |
+| Recepción 1 | `recepcion1@turnos.local` | `Recepcion123!` |
+| Recepción 2 | `recepcion2@turnos.local` | `Recepcion123!` |
+| Médico 1 (Clínica) | `medico1@turnos.local` | `Medico12345!` |
+| Médico 2 (Cardiología) | `medico2@turnos.local` | `Medico12345!` |
+| Médico 3 (Pediatría) | `medico3@turnos.local` | `Medico12345!` |
+| Paciente 1 | `paciente1@turnos.local` | `Paciente123!` |
+| Paciente 2 | `paciente2@turnos.local` | `Paciente123!` |
 
 ## Comandos útiles
 
@@ -79,8 +83,20 @@ pnpm build
 
 > `scripts/verify_migration.py` comprueba contra PostgreSQL real las exclusion
 > constraints por médico y paciente, los `CHECK` de DNI y duración, las
-> unicidades parciales y el ciclo `downgrade base` + `upgrade head`.
+> unicidades parciales, la inmutabilidad de `rango_turno` y el ciclo
+> `downgrade base` + `upgrade head` (21 comprobaciones).
 > **Borra el esquema `public`** de la base indicada: usalo solo en local o CI.
+> Dentro de Compose hay que apuntarlo a una base descartable:
+>
+> ```bash
+> docker compose exec db psql -U postgres -c "CREATE DATABASE turnos_verify;"
+> docker compose exec api python scripts/verify_migration.py \
+>   --url postgresql://postgres:postgres@db:5432/turnos_verify
+> docker compose exec db psql -U postgres -c "DROP DATABASE turnos_verify;"
+> ```
+>
+> `docker compose exec api pytest` no aplica `pytest.ini` (no está en la imagen):
+> corré los tests desde el host.
 
 ## Arquitectura
 
