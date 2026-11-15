@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
+from sqlalchemy import select
+
 from app.core.timezone import now_utc
 from app.db.models.enums import EstadoTurno, RolUsuario
 from app.db.models.paciente import Paciente
@@ -137,12 +139,12 @@ async def test_deshabilitar_medico_con_turnos_futuros_falla(client, sesion, fabr
     paciente_user = await fabrica.crear(rol=RolUsuario.PACIENTE)
 
     async with SessionLocal() as db:
-        paciente = await db.scalar(
-            Paciente.__table__.select().where(Paciente.id_usuario == paciente_user.id_usuario)
+        id_paciente = await db.scalar(
+            select(Paciente.id_paciente).where(Paciente.id_usuario == paciente_user.id_usuario)
         )
-        assert paciente is not None
+        assert id_paciente is not None
         turno = Turno(
-            id_paciente=paciente.id_paciente,
+            id_paciente=id_paciente,
             id_medico=id_medico,
             fecha_hora=now_utc() + timedelta(days=2),
             duracion_minutos=30,

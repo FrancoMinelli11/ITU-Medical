@@ -7,6 +7,8 @@ from datetime import datetime as dt
 from datetime import time as dtime
 from typing import Any
 
+from sqlalchemy import select
+
 from app.core.timezone import LOCAL_TZ, now_utc, to_local
 from app.db.models.enums import EstadoTurno, RolUsuario
 from app.db.models.paciente import Paciente
@@ -147,12 +149,12 @@ async def test_cambio_horarios_afecta_turnos_rechazado(client, sesion, fabrica) 
     turno_inicio_utc = turno_inicio_local.astimezone()
 
     async with SessionLocal() as db:
-        paciente = await db.scalar(
-            Paciente.__table__.select().where(Paciente.id_usuario == paciente_user.id_usuario)
+        id_paciente = await db.scalar(
+            select(Paciente.id_paciente).where(Paciente.id_usuario == paciente_user.id_usuario)
         )
-        assert paciente is not None
+        assert id_paciente is not None
         turno = Turno(
-            id_paciente=paciente.id_paciente,
+            id_paciente=id_paciente,
             id_medico=id_medico,
             fecha_hora=turno_inicio_utc,
             duracion_minutos=30,
@@ -192,12 +194,12 @@ async def test_bloqueo_con_turnos_rechazado_y_bloqueo_ok(client, sesion, fabrica
     turno_hora = now_utc() + timedelta(days=5)
 
     async with SessionLocal() as db:
-        paciente = await db.scalar(
-            Paciente.__table__.select().where(Paciente.id_usuario == paciente_user.id_usuario)
+        id_paciente = await db.scalar(
+            select(Paciente.id_paciente).where(Paciente.id_usuario == paciente_user.id_usuario)
         )
-        assert paciente is not None
+        assert id_paciente is not None
         turno = Turno(
-            id_paciente=paciente.id_paciente,
+            id_paciente=id_paciente,
             id_medico=id_medico,
             fecha_hora=turno_hora,
             duracion_minutos=30,
