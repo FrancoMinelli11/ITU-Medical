@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     especialidades,
     medicos,
     pacientes,
+    recepcion,
     solicitudes_cancelacion,
     system,
     turnos,
@@ -25,3 +26,4 @@ api_router.include_router(
     prefix="/solicitudes-cancelacion",
     tags=["solicitudes-cancelacion"],
 )
+api_router.include_router(recepcion.router, prefix="/recepcion", tags=["recepcion"])

@@ -121,6 +121,19 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | P-15 (resolución de solicitud por recepción) | — | `test_cancelaciones.py::test_resolucion_solicitud_cancelacion_por_recepcion` |
 | P-16 (cancelación desde recepción con motivo) | — | `test_cancelaciones.py::test_cancelacion_desde_recepcion_con_motivo_y_trazabilidad` |
 
+### H6 — recepción: llegadas, orden de atención y ausencias
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-11 (registro de llegada, prevención duplicados) | `app/services/llegada_service.py::registrar_llegada`, `POST /recepcion/turnos/{id}/llegada` | `test_llegadas_y_orden.py::test_registro_llegada_ok_y_duplicada_rechazada` |
+| RF-12, RN-15..RN-19 (orden de atención y tolerancia 10 min) | `app/domain/orden_atencion.py`, `llegada_service.py::obtener_sala_espera` | `test_llegadas_y_orden.py::test_orden_atencion_y_tolerancia_10_minutos` |
+| RF-15 (ausencias individuales y cierre de jornada) | `llegada_service.py::registrar_ausencia_individual`, `cerrar_jornada_ausencias` | `test_llegadas_y_orden.py::test_registro_ausencias_individual_y_cierre_jornada` |
+| P-17 (registro de llegada) | — | `test_llegadas_y_orden.py::test_registro_llegada_ok_y_duplicada_rechazada` |
+| P-18 (llegada duplicada prevenida) | — | `test_llegadas_y_orden.py::test_registro_llegada_ok_y_duplicada_rechazada` |
+| P-19 (orden de atención de pacientes puntuales) | — | `test_llegadas_y_orden.py::test_orden_atencion_y_tolerancia_10_minutos` |
+| P-20 (tolerancia: llegada > 10 min pierde prioridad) | — | `test_llegadas_y_orden.py::test_orden_atencion_y_tolerancia_10_minutos` |
+| P-21 (confirmación de ausencias) | — | `test_llegadas_y_orden.py::test_registro_ausencias_individual_y_cierre_jornada` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |
