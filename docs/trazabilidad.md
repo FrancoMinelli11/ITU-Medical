@@ -144,6 +144,19 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | P-23 (confidencialidad clínica: acceso restringido a rol MEDICO/ADMIN) | `app/api/v1/endpoints/notas.py::MedicoOAdminDep`, `nota_service.py` | `test_notas_y_atencion.py::test_acceso_notas_medicas_restringido` |
 | RF-19 (auditoría ATENCION_TURNO, ALTA_NOTA_MEDICA, MODIFICACION_NOTA_MEDICA) | `Accion.ATENCION_TURNO`, `ALTA_NOTA_MEDICA`, `MODIFICACION_NOTA_MEDICA` en `auditoria_service.py` | `test_notas_y_atencion.py::test_atender_turno_ok` |
 
+### H8 — usuario rojo y restricciones
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-16, CU-10 (clasificación como Usuario rojo, duración 30 días) | `app/services/restriccion_service.py::clasificar_usuario_rojo`, `POST /restricciones` | `test_restricciones.py::test_clasificar_usuario_rojo_ok` |
+| RF-22 (notificación RESTRICCION_USUARIO_ROJO con motivo y vigencia) | `notificacion_service.cuerpo_restriccion_usuario_rojo` | `test_restricciones.py::test_clasificar_usuario_rojo_ok` |
+| RN-20, RN-21 (bloqueo reserva web, recepción permitida) | `restriccion_service.py`, `turno_service.py::es_usuario_rojo` | `test_restricciones.py::test_reserva_web_rechazada_y_recepcion_permitida` |
+| RN-36, P-26 (vigencia evaluada por fecha_fin en cada request sin cron) | `restriccion_service.obtener_estado_paciente`, `turno_service.es_usuario_rojo` | `test_restricciones.py::test_restriccion_vencida_permite_reserva_sin_cron` |
+| P-24 (clasificación por 30 días y notificación) | — | `test_restricciones.py::test_clasificar_usuario_rojo_ok` |
+| P-25 (intento de reserva web con restricción activa) | — | `test_restricciones.py::test_reserva_web_rechazada_y_recepcion_permitida` |
+| P-26 (restricción vencida sin cron) | — | `test_restricciones.py::test_restriccion_vencida_permite_reserva_sin_cron` |
+| Levantamiento y auditoría (ALTA/BAJA_RESTRICCION_USUARIO) | `restriccion_service.py::levantar_restriccion`, `POST /restricciones/{id}/levantar` | `test_restricciones.py::test_levantar_restriccion_administrativa` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |

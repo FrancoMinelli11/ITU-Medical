@@ -148,6 +148,48 @@ def cuerpo_cancelacion_turno(
     return asunto, cuerpo
 
 
+def cuerpo_restriccion_usuario_rojo(
+    usuario: Usuario,
+    *,
+    motivo: str,
+    fecha_fin_texto: str,
+) -> tuple[str, str]:
+    """Asunto y cuerpo del correo de notificación de restricción de usuario (RF-16, RF-22)."""
+    asunto = "Información sobre el estado de tu cuenta"
+    cuerpo = (
+        f"{saludo(usuario)}\n\n"
+        "Te informamos que tu cuenta ha recibido una restricción temporal para la reserva "
+        "de turnos a través de nuestro portal web (condición Usuario rojo).\n\n"
+        f"- Motivo: {motivo}\n"
+        f"- Vigencia hasta: {fecha_fin_texto}\n\n"
+        "Durante este período, podés continuar gestionando y reservando tus turnos médicos "
+        "de manera presencial en la recepción del centro o por vía telefónica."
+        f"{_pie()}"
+    )
+    return asunto, cuerpo
+
+
+def cuerpo_recordatorio_24h(
+    usuario: Usuario,
+    *,
+    fecha_hora_texto: str,
+    medico_nombre_completo: str,
+    especialidad_nombre: str,
+) -> tuple[str, str]:
+    """Asunto y cuerpo del correo de recordatorio de turno 24hs antes (RF-22, P-39)."""
+    asunto = f"Recordatorio de turno médico mañana - {especialidad_nombre}"
+    cuerpo = (
+        f"{saludo(usuario)}\n\n"
+        "Te recordamos tu próximo turno médico programado para mañana:\n\n"
+        f"- Especialidad: {especialidad_nombre}\n"
+        f"- Profesional: {medico_nombre_completo}\n"
+        f"- Fecha y hora: {fecha_hora_texto}\n\n"
+        "Recordá presentarte en recepción con 10 minutos de anticipación."
+        f"{_pie()}"
+    )
+    return asunto, cuerpo
+
+
 async def despachar(
     notificacion: Notificacion, *, destinatario: str, asunto: str, cuerpo: str
 ) -> bool:

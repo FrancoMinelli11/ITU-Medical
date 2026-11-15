@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     notas,
     pacientes,
     recepcion,
+    restricciones,
     solicitudes_cancelacion,
     system,
     turnos,
@@ -29,3 +30,4 @@ api_router.include_router(
 )
 api_router.include_router(recepcion.router, prefix="/recepcion", tags=["recepcion"])
 api_router.include_router(notas.router, prefix="/notas", tags=["notas"])
+api_router.include_router(restricciones.router, prefix="/restricciones", tags=["restricciones"])
