@@ -110,6 +110,44 @@ def cuerpo_confirmacion_turno(
     return asunto, cuerpo
 
 
+def cuerpo_cancelacion_turno(
+    usuario: Usuario,
+    *,
+    fecha_hora_texto: str,
+    medico_nombre_completo: str,
+    especialidad_nombre: str,
+    motivo_texto: str,
+    aprobada: bool = True,
+) -> tuple[str, str]:
+    """Asunto y cuerpo del correo de cancelación de turno (RF-08, RF-09, RF-10, RF-22)."""
+    if not aprobada:
+        asunto = f"Solicitud de cancelación rechazada - {especialidad_nombre}"
+        cuerpo = (
+            f"{saludo(usuario)}\n\n"
+            "Te informamos que tu solicitud de cancelación rápida para el siguiente turno "
+            "ha sido rechazada:\n\n"
+            f"- Especialidad: {especialidad_nombre}\n"
+            f"- Profesional: {medico_nombre_completo}\n"
+            f"- Fecha y hora: {fecha_hora_texto}\n"
+            f"- Motivo: {motivo_texto}\n\n"
+            "El turno conserva su estado confirmado."
+            f"{_pie()}"
+        )
+    else:
+        asunto = f"Cancelación de turno - {especialidad_nombre}"
+        cuerpo = (
+            f"{saludo(usuario)}\n\n"
+            "Te confirmamos que tu turno médico ha sido cancelado:\n\n"
+            f"- Especialidad: {especialidad_nombre}\n"
+            f"- Profesional: {medico_nombre_completo}\n"
+            f"- Fecha y hora: {fecha_hora_texto}\n"
+            f"- Motivo: {motivo_texto}\n\n"
+            "El horario ha quedado liberado."
+            f"{_pie()}"
+        )
+    return asunto, cuerpo
+
+
 async def despachar(
     notificacion: Notificacion, *, destinatario: str, asunto: str, cuerpo: str
 ) -> bool:

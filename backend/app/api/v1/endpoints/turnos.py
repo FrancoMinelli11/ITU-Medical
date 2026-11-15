@@ -11,13 +11,19 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from app.api.deps import RateLimitRedisDep, SessionDep, require_roles
 from app.db.models.enums import EstadoTurno, RolUsuario
 from app.db.models.usuario import Usuario
+from app.schemas.cancelacion import (
+    CancelacionPacienteRequest,
+    CancelacionRecepcionRequest,
+    SolicitudCancelacionCreate,
+    SolicitudCancelacionOut,
+)
 from app.schemas.turno import (
     ReservaTurnoRecepcionRequest,
     ReservaTurnoWebRequest,
     TurnoResponse,
     TurnosListResponse,
 )
-from app.services import turno_service
+from app.services import cancelacion_service, turno_service
 
 router = APIRouter()
 
@@ -124,4 +130,68 @@ async def obtener_turno(
         session,
         id_turno=id_turno,
         usuario_actual=usuario_actual,
+    )
+
+
+@router.post(
+    "/{id_turno}/cancelar",
+    response_model=TurnoResponse,
+    summary="Cancelación habitual de turno por parte del paciente (>= 24 hs)",
+)
+async def cancelar_turno_paciente(
+    id_turno: UUID,
+    session: SessionDep,
+    paciente_usuario: PacienteDep,
+    request: Request,
+    datos: CancelacionPacienteRequest | None = None,
+) -> TurnoResponse:
+    return await cancelacion_service.cancelar_turno_paciente(
+        session,
+        id_turno=id_turno,
+        usuario_paciente=paciente_usuario,
+        datos=datos,
+        request=request,
+    )
+
+
+@router.post(
+    "/{id_turno}/cancelar-recepcion",
+    response_model=TurnoResponse,
+    summary="Cancelación administrativa de turno por recepción",
+)
+async def cancelar_turno_recepcion(
+    id_turno: UUID,
+    datos: CancelacionRecepcionRequest,
+    session: SessionDep,
+    staff_usuario: StaffDep,
+    request: Request,
+) -> TurnoResponse:
+    return await cancelacion_service.cancelar_turno_recepcion(
+        session,
+        id_turno=id_turno,
+        usuario_staff=staff_usuario,
+        datos=datos,
+        request=request,
+    )
+
+
+@router.post(
+    "/{id_turno}/solicitar-cancelacion",
+    response_model=SolicitudCancelacionOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Solicitar cancelación rápida de turno (< 24 hs)",
+)
+async def solicitar_cancelacion_rapida(
+    id_turno: UUID,
+    datos: SolicitudCancelacionCreate,
+    session: SessionDep,
+    paciente_usuario: PacienteDep,
+    request: Request,
+) -> SolicitudCancelacionOut:
+    return await cancelacion_service.solicitar_cancelacion_rapida(
+        session,
+        id_turno=id_turno,
+        usuario_paciente=paciente_usuario,
+        datos=datos,
+        request=request,
     )

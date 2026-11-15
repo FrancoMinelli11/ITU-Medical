@@ -106,6 +106,21 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | RNF-03 (permisos server-side en turnos) | `turnos.py`, `turno_service.listar_turnos`, `obtener_turno` | `test_turnos.py::test_listar_turnos_permisos_y_filtros` |
 | P-08, P-09, P-10, P-11, P-32, P-37, P-38 | — | `test_turnos.py` |
 
+### H5 — cancelaciones y solicitudes rápidas
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-08 (cancelación habitual >= 24 hs, libera horario) | `app/services/cancelacion_service.py::cancelar_turno_paciente`, `POST /turnos/{id}/cancelar` | `test_cancelaciones.py::test_cancelacion_habitual_mas_de_24hs_y_libera_horario` |
+| RF-09 (solicitud rápida < 24 hs, resolución recepción) | `cancelacion_service.py::solicitar_cancelacion_rapida`, `POST /turnos/{id}/solicitar-cancelacion` | `test_cancelaciones.py::test_cancelacion_menos_de_24hs_rechaza_habitual_y_permite_rapida` |
+| RF-10, RF-24, RN-34 (cancelación desde recepción) | `cancelacion_service.py::cancelar_turno_recepcion`, `POST /turnos/{id}/cancelar-recepcion` | `test_cancelaciones.py::test_cancelacion_desde_recepcion_con_motivo_y_trazabilidad` |
+| RF-22 (notificación CANCELACION_TURNO) | `notificacion_service.cuerpo_cancelacion_turno` | `test_cancelaciones.py::test_cancelacion_habitual_mas_de_24hs_y_libera_horario` |
+| RN-10..RN-14 (reglas de cancelación y liberación) | `cancelacion_service.py` | `test_cancelaciones.py` |
+| P-12 (cancelación habitual >= 24 hs) | — | `test_cancelaciones.py::test_cancelacion_habitual_mas_de_24hs_y_libera_horario` |
+| P-13 (cancelación rápida < 24 hs) | — | `test_cancelaciones.py::test_cancelacion_menos_de_24hs_rechaza_habitual_y_permite_rapida` |
+| P-14 (solicitud con motivo) | — | `test_cancelaciones.py::test_solicitud_cancelacion_rapida_valida_motivo` |
+| P-15 (resolución de solicitud por recepción) | — | `test_cancelaciones.py::test_resolucion_solicitud_cancelacion_por_recepcion` |
+| P-16 (cancelación desde recepción con motivo) | — | `test_cancelaciones.py::test_cancelacion_desde_recepcion_con_motivo_y_trazabilidad` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |
