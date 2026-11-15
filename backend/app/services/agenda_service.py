@@ -19,6 +19,7 @@ from app.db.models.medico import Medico
 from app.db.models.paciente import Paciente
 from app.db.models.turno import Turno
 from app.db.models.usuario import Usuario
+from app.domain.estados import ESTADOS_EXCLUSION
 from app.schemas.agenda import (
     AgendaOut,
     AgendaTurnoOut,
@@ -407,7 +408,7 @@ async def calcular_disponibilidad(
         await session.scalars(
             select(Turno).where(
                 Turno.id_medico == id_medico,
-                Turno.estado.in_([EstadoTurno.RESERVADO, EstadoTurno.EN_ESPERA]),
+                Turno.estado.in_(ESTADOS_EXCLUSION),
                 Turno.fecha_hora < fin_utc,
             )
         )

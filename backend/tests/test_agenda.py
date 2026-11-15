@@ -6,10 +6,11 @@ from datetime import date, timedelta
 from datetime import datetime as dt
 from datetime import time as dtime
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import select
 
-from app.core.timezone import LOCAL_TZ, now_utc, to_local
+from app.core.timezone import LOCAL_TZ, now_utc, to_local, to_utc
 from app.db.models.enums import EstadoTurno, RolUsuario
 from app.db.models.paciente import Paciente
 from app.db.models.turno import Turno
@@ -289,3 +290,58 @@ async def test_consultar_disponibilidad_y_agenda(client, sesion, fabrica) -> Non
     assert res_agenda.status_code == 200
     assert "turnos" in res_agenda.json()
     assert "bloqueos" in res_agenda.json()
+
+
+async def test_disponibilidad_excluye_turno_atendido(client, sesion, fabrica) -> None:
+    """3.c: comprobar que un turno en estado ATENDIDO no aparece como disponible en la agenda."""
+    await _admin(fabrica, sesion)
+    id_medico = await _crear_medico(client, sesion, fabrica)
+
+    # Configurar horario para mañana de 08:00 a 09:00 (dos slots de 30 min)
+    manana = date.today() + timedelta(days=1)
+    dia_semana = manana.weekday()
+    horarios = [
+        {
+            "dia_semana": dia_semana,
+            "hora_inicio": "08:00:00",
+            "hora_fin": "09:00:00",
+            "duracion_minutos": 30,
+        }
+    ]
+    await client.put(
+        f"/api/v1/medicos/{id_medico}/horarios",
+        json={"horarios": horarios},
+        headers=sesion.mutacion(),
+    )
+
+    # Crear paciente y un turno ATENDIDO a las 08:00 de mañana
+    paciente_user = await fabrica.crear(rol=RolUsuario.PACIENTE, password=PASSWORD)
+    async with SessionLocal() as db:
+        paciente = await db.scalar(
+            select(Paciente).where(Paciente.id_usuario == paciente_user.id_usuario)
+        )
+        assert paciente is not None
+        slot_local = dt.combine(manana, dtime(8, 0), tzinfo=LOCAL_TZ)
+        slot_utc = to_utc(slot_local)
+        turno = Turno(
+            id_paciente=paciente.id_paciente,
+            id_medico=UUID(id_medico),
+            fecha_hora=slot_utc,
+            duracion_minutos=30,
+            estado=EstadoTurno.ATENDIDO,
+            id_usuario_creador=paciente_user.id_usuario,
+        )
+        db.add(turno)
+        await db.commit()
+
+    # Consultar disponibilidad: slot 08:00 ocupado por ATENDIDO, solo queda 08:30
+    res_disp = await client.get(
+        f"/api/v1/medicos/{id_medico}/disponibilidad",
+        params={"fecha_desde": manana.isoformat(), "fecha_hasta": manana.isoformat()},
+        headers=sesion.bearer,
+    )
+    assert res_disp.status_code == 200
+    slots = res_disp.json()["slots"]
+    assert len(slots) == 1
+    inicio_slot_0 = to_local(dt.fromisoformat(slots[0]["fecha_hora"]))
+    assert inicio_slot_0.hour == 8 and inicio_slot_0.minute == 30

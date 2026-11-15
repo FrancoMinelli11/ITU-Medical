@@ -151,10 +151,7 @@ async def crear_nota_seguimiento(
     request: Request | None = None,
 ) -> NotaSeguimientoOut:
     """Registra una nota de seguimiento médico para un paciente (RF-14, P-22, P-23)."""
-    medico = await session.scalar(
-        select(Medico).where(Medico.id_usuario == usuario_medico.id_usuario)
-    )
-    if medico is None and usuario_medico.rol != RolUsuario.ADMINISTRADOR:
+    if usuario_medico.rol != RolUsuario.MEDICO:
         raise ApiError(
             403,
             "ACCESO_DENEGADO",
@@ -162,17 +159,43 @@ async def crear_nota_seguimiento(
             "Solo los profesionales médicos pueden registrar notas de seguimiento.",
         )
 
+    medico = await session.scalar(
+        select(Medico).where(Medico.id_usuario == usuario_medico.id_usuario)
+    )
+    if medico is None:
+        raise ApiError(
+            403,
+            "ACCESO_DENEGADO",
+            "Médico no encontrado",
+            "No se encontró el registro profesional para el usuario.",
+        )
+
     paciente = await session.get(Paciente, datos.id_paciente)
     if paciente is None:
         raise ApiError(*PACIENTE_NO_ENCONTRADO)
 
-    id_medico_final = (
-        medico.id_medico if medico else (await session.scalar(select(Medico.id_medico)))
+    # Validar relación clínica real: al menos un turno entre este médico y el paciente
+    turno_relacion = await session.scalar(
+        select(Turno.id_turno)
+        .where(
+            Turno.id_medico == medico.id_medico,
+            Turno.id_paciente == datos.id_paciente,
+        )
+        .limit(1)
     )
-    assert id_medico_final is not None
+    if turno_relacion is None:
+        raise ApiError(
+            403,
+            "ACCESO_DENEGADO",
+            "Sin relación clínica",
+            (
+                "No podés registrar notas sobre un paciente con quien no tenés o "
+                "tuviste turnos asignados."
+            ),
+        )
 
     nota = NotaSeguimiento(
-        id_medico=id_medico_final,
+        id_medico=medico.id_medico,
         id_paciente=datos.id_paciente,
         id_turno=datos.id_turno,
         contenido=datos.contenido,
@@ -193,7 +216,7 @@ async def crear_nota_seguimiento(
 
     await session.commit()
 
-    medico_actual = await session.get(Medico, id_medico_final)
+    medico_actual = await session.get(Medico, medico.id_medico)
     assert medico_actual is not None
     m_usr = await session.get(Usuario, medico_actual.id_usuario)
     esp = await session.get(Especialidad, medico_actual.id_especialidad)
@@ -284,6 +307,37 @@ async def listar_notas_paciente(
             "Permisos insuficientes",
             "Solo los profesionales médicos tienen acceso a las anotaciones de seguimiento.",
         )
+
+    # Para el rol MEDICO, exigir relación clínica previa (RN-24, P-23)
+    if usuario_actual.rol == RolUsuario.MEDICO:
+        medico = await session.scalar(
+            select(Medico).where(Medico.id_usuario == usuario_actual.id_usuario)
+        )
+        if medico is None:
+            raise ApiError(
+                403,
+                "ACCESO_DENEGADO",
+                "Médico no encontrado",
+                "No se encontró el registro profesional para el usuario.",
+            )
+        turno_relacion = await session.scalar(
+            select(Turno.id_turno)
+            .where(
+                Turno.id_medico == medico.id_medico,
+                Turno.id_paciente == id_paciente,
+            )
+            .limit(1)
+        )
+        if turno_relacion is None:
+            raise ApiError(
+                403,
+                "ACCESO_DENEGADO",
+                "Sin relación clínica",
+                (
+                    "No podés acceder a las notas de un paciente con quien no tenés o "
+                    "tuviste turnos asignados."
+                ),
+            )
 
     stmt = (
         select(NotaSeguimiento, Medico, Usuario, Especialidad)

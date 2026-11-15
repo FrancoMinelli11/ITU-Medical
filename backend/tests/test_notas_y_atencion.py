@@ -198,6 +198,18 @@ async def test_crear_y_modificar_nota_medica_ok(client: Any, sesion: Any, fabric
         )
         assert id_paciente is not None
 
+        # Turno previo para establecer relación clínica real (RN-24, P-23)
+        turno = Turno(
+            id_paciente=id_paciente,
+            id_medico=id_medico,
+            fecha_hora=to_local(now_utc()) + timedelta(hours=1),
+            duracion_minutos=30,
+            estado=EstadoTurno.ATENDIDO,
+            id_usuario_creador=paciente_user.id_usuario,
+        )
+        db.add(turno)
+        await db.commit()
+
     await sesion.login(med_user.dni, PASSWORD)
 
     # 1. Crear nota médica
@@ -251,6 +263,18 @@ async def test_acceso_notas_medicas_restringido(client: Any, sesion: Any, fabric
         )
         assert id_paciente is not None
 
+        # Turno previo con med1 para tener relación clínica (RN-24, P-23)
+        turno = Turno(
+            id_paciente=id_paciente,
+            id_medico=id_med1,
+            fecha_hora=to_local(now_utc()) + timedelta(hours=1),
+            duracion_minutos=30,
+            estado=EstadoTurno.ATENDIDO,
+            id_usuario_creador=paciente_user.id_usuario,
+        )
+        db.add(turno)
+        await db.commit()
+
     # Médico crea una nota
     await sesion.login(med1_user.dni, PASSWORD)
     res_crear = await client.post(
@@ -297,3 +321,99 @@ async def test_acceso_notas_medicas_restringido(client: Any, sesion: Any, fabric
     )
     assert res_otro_med_put.status_code == 403
     assert res_otro_med_put.json()["code"] == "ACCESO_DENEGADO"
+
+
+async def test_medico_sin_relacion_clinica_rechazado(
+    client: Any, sesion: Any, fabrica: Any
+) -> None:
+    """3.a, RN-24, P-23: Un médico sin turnos con el paciente no puede crear ni leer notas."""
+    med_user, _id_med = await _crear_medico_completo(fabrica, sesion, nombre="DocSinRelacion")
+    paciente_user = await fabrica.crear(
+        rol=RolUsuario.PACIENTE, password=PASSWORD, email_verificado=True
+    )
+    async with SessionLocal() as db:
+        id_paciente = await db.scalar(
+            select(Paciente.id_paciente).where(Paciente.id_usuario == paciente_user.id_usuario)
+        )
+        assert id_paciente is not None
+
+    await sesion.login(med_user.dni, PASSWORD)
+
+    # 1. Intentar crear nota sin relación clínica -> 403 ACCESO_DENEGADO
+    res_crear = await client.post(
+        "/api/v1/notas",
+        json={
+            "id_paciente": str(id_paciente),
+            "contenido": "Intento de nota sin relación clínica previa.",
+        },
+        headers=sesion.mutacion(),
+    )
+    assert res_crear.status_code == 403
+    assert res_crear.json()["code"] == "ACCESO_DENEGADO"
+
+    # 2. Intentar listar notas sin relación clínica -> 403 ACCESO_DENEGADO
+    res_listar = await client.get(
+        f"/api/v1/notas/paciente/{id_paciente}",
+        headers=sesion.bearer,
+    )
+    assert res_listar.status_code == 403
+    assert res_listar.json()["code"] == "ACCESO_DENEGADO"
+
+
+async def test_administrador_no_puede_crear_notas_medicas(
+    client: Any, sesion: Any, fabrica: Any
+) -> None:
+    """3.b: El administrador no puede crear notas médicas (403), pero puede auditarlas (200)."""
+    admin = await _admin_user(fabrica, sesion)
+    med_user, id_med = await _crear_medico_completo(fabrica, sesion, nombre="DocConRelacion")
+    paciente_user = await fabrica.crear(
+        rol=RolUsuario.PACIENTE, password=PASSWORD, email_verificado=True
+    )
+    async with SessionLocal() as db:
+        id_paciente = await db.scalar(
+            select(Paciente.id_paciente).where(Paciente.id_usuario == paciente_user.id_usuario)
+        )
+        assert id_paciente is not None
+        turno = Turno(
+            id_paciente=id_paciente,
+            id_medico=id_med,
+            fecha_hora=to_local(now_utc()) + timedelta(hours=1),
+            duracion_minutos=30,
+            estado=EstadoTurno.ATENDIDO,
+            id_usuario_creador=paciente_user.id_usuario,
+        )
+        db.add(turno)
+        await db.commit()
+
+    # Médico crea una nota válida
+    await sesion.login(med_user.dni, PASSWORD)
+    res_crear = await client.post(
+        "/api/v1/notas",
+        json={
+            "id_paciente": str(id_paciente),
+            "contenido": "Nota clínica del médico tratante.",
+        },
+        headers=sesion.mutacion(),
+    )
+    assert res_crear.status_code == 201
+
+    # Administrador intenta crear nota -> 403 ACCESO_DENEGADO
+    await sesion.login(admin.dni, PASSWORD)
+    res_admin_crear = await client.post(
+        "/api/v1/notas",
+        json={
+            "id_paciente": str(id_paciente),
+            "contenido": "Intento de nota por administrador del sistema.",
+        },
+        headers=sesion.mutacion(),
+    )
+    assert res_admin_crear.status_code == 403
+    assert res_admin_crear.json()["code"] == "ACCESO_DENEGADO"
+
+    # Administrador puede listar notas para supervisión/auditoría -> 200
+    res_admin_listar = await client.get(
+        f"/api/v1/notas/paciente/{id_paciente}",
+        headers=sesion.bearer,
+    )
+    assert res_admin_listar.status_code == 200
+    assert len(res_admin_listar.json()) == 1
