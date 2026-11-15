@@ -157,6 +157,15 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | P-26 (restricción vencida sin cron) | — | `test_restricciones.py::test_restriccion_vencida_permite_reserva_sin_cron` |
 | Levantamiento y auditoría (ALTA/BAJA_RESTRICCION_USUARIO) | `restriccion_service.py::levantar_restriccion`, `POST /restricciones/{id}/levantar` | `test_restricciones.py::test_levantar_restriccion_administrativa` |
 
+### H9 — scheduler de recordatorios 24 hs y zona horaria
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-22, P-39 (recordatorio 24 horas antes) | `app/services/recordatorio_service.py::procesar_recordatorios_24h`, `app/workers/scheduler.py` | `test_scheduler_recordatorio.py::test_envio_recordatorio_24hs_ok` |
+| RN-32, RNF-06 (recordatorio idempotente y único por turno) | `notificacion_service.py` + `uq_notificacion_confirmacion_recordatorio` | `test_scheduler_recordatorio.py::test_envio_recordatorio_es_idempotente` |
+| P-39 (detección de turnos y despacho a 24 horas) | — | `test_scheduler_recordatorio.py::test_envio_recordatorio_24hs_ok` |
+| P-44 (zona horaria America/Argentina/Buenos_Aires en reglas y presentación) | `app/core/timezone.py` (`to_local`, `to_utc`, `LOCAL_TZ`) | `test_zona_horaria.py` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |
