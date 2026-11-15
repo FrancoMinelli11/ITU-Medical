@@ -9,6 +9,10 @@ import { RegistroPage } from "@/features/auth/RegistroPage";
 import { RestablecerPasswordPage } from "@/features/auth/RestablecerPasswordPage";
 import { VerificarEmailPage } from "@/features/auth/VerificarEmailPage";
 import { InicioPage } from "@/features/inicio/InicioPage";
+import { MedicoPage } from "@/features/medico/MedicoPage";
+import { RecepcionPage } from "@/features/recepcion/RecepcionPage";
+import { MisTurnosPage } from "@/features/turnos/MisTurnosPage";
+import { ReservarTurnoPage } from "@/features/turnos/ReservarTurnoPage";
 import { RutaProtegida } from "@/routes/RutaProtegida";
 import { RutaPublica } from "@/routes/RutaPublica";
 
@@ -46,6 +50,16 @@ export default function App() {
           <Route path="/" element={<InicioPage />} />
           <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
           <Route path="/primer-ingreso" element={<PrimerIngresoPage />} />
+
+          {/* Módulo Paciente */}
+          <Route path="/turnos" element={<MisTurnosPage />} />
+          <Route path="/turnos/reservar" element={<ReservarTurnoPage />} />
+
+          {/* Módulo Recepción */}
+          <Route path="/recepcion" element={<RecepcionPage />} />
+
+          {/* Módulo Médico */}
+          <Route path="/medico" element={<MedicoPage />} />
         </Route>
 
         <Route path="*" element={<NoEncontrado />} />

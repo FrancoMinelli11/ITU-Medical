@@ -173,6 +173,15 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | P-29 (matriz de permisos server-side en todos los endpoints) | Dependencias `require_roles`, guards por rol en endpoints | `test_permisos.py` |
 | P-45 (backup y restore de la base de datos) | `scripts/backup.sh`, `scripts/restore.sh`, consistencia relacional | `test_backup_restore.py` |
 
+### Frontend de gestión clínica (Paciente, Recepción, Médico)
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-04, RF-05, RF-08, RF-09 (Portal Paciente: mis turnos, reserva, cancelación habitual y rápida) | `frontend/src/features/turnos/MisTurnosPage.tsx`, `ReservarTurnoPage.tsx`, `ModalCancelarTurno.tsx`, `turnos/api.ts` | `MisTurnosPage.test.tsx`, `ReservarTurnoPage.test.tsx` |
+| RF-02, RF-07, RF-09, RF-10, RF-11, RF-12, RF-15, RF-16, RN-15..RN-19 (Portal Recepción: sala de espera con orden por prioridad y tolerancia, alta rápida paciente, reserva, cancelación con motivo, ausencias, usuario rojo) | `frontend/src/features/recepcion/RecepcionPage.tsx`, `recepcion/api.ts` | `RecepcionPage.test.tsx` |
+| RF-13, RF-14, RN-23, RN-24 (Portal Médico: agenda de turnos asignados, registro de atención EN_ESPERA -> ATENDIDO, notas clínicas de seguimiento) | `frontend/src/features/medico/MedicoPage.tsx`, `medico/api.ts` | `MedicoPage.test.tsx` |
+| Navegación por rol y dashboard | `frontend/src/components/layout/AppNavbar.tsx`, `frontend/src/features/inicio/InicioPage.tsx`, `frontend/src/App.tsx` | `App.test.tsx`, `PrimerIngresoPage.test.tsx` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |

@@ -95,3 +95,18 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
+
+export const clienteApi = {
+  get: <T>(path: string) => apiFetch<T>(path, { method: "GET" }),
+  post: <T>(path: string, body?: unknown) =>
+    apiFetch<T>(path, {
+      method: "POST",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
+  put: <T>(path: string, body?: unknown) =>
+    apiFetch<T>(path, {
+      method: "PUT",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
+  delete: <T>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
+};

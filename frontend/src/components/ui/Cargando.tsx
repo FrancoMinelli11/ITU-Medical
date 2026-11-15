@@ -1,10 +1,10 @@
-/** Espera a que el bootstrap de sesión termine de resolver. */
-export function Cargando() {
+/** Indicador de estado de carga. */
+export function Cargando({ texto = "Cargando…" }: { texto?: string } = {}) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50">
+    <div className="flex items-center justify-center p-4">
       <p role="status" className="text-sm text-slate-600">
-        Cargando…
+        {texto}
       </p>
-    </main>
+    </div>
   );
 }
