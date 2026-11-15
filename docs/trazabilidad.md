@@ -166,6 +166,13 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | P-39 (detección de turnos y despacho a 24 horas) | — | `test_scheduler_recordatorio.py::test_envio_recordatorio_24hs_ok` |
 | P-44 (zona horaria America/Argentina/Buenos_Aires en reglas y presentación) | `app/core/timezone.py` (`to_local`, `to_utc`, `LOCAL_TZ`) | `test_zona_horaria.py` |
 
+### Verificación de seguridad y soporte (P-29, P-45)
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| P-29 (matriz de permisos server-side en todos los endpoints) | Dependencias `require_roles`, guards por rol en endpoints | `test_permisos.py` |
+| P-45 (backup y restore de la base de datos) | `scripts/backup.sh`, `scripts/restore.sh`, consistencia relacional | `test_backup_restore.py` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |
