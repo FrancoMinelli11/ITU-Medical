@@ -11,6 +11,7 @@ from sqlalchemy import (
     Index,
     Integer,
     Text,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -69,5 +70,8 @@ class Turno(Base):
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
     fecha_actualizacion: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+        onupdate=func.now(),
     )

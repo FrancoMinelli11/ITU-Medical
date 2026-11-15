@@ -11,11 +11,13 @@ las decisiones de diseño de la FASE 2, en [`docs/diseno.md`](docs/diseno.md).
   (login, refresh rotativo, CSRF, rate limiting, `/auth/me` y auditoría),
   **H2.2 registro/verificación/pacientes** (alta web y por recepción, correo de
   verificación asíncrono, CRUD de pacientes), **H2.3 recuperación/cambio de
-  contraseña** (recuperación por correo, primer ingreso y revocación de sesiones)
-  y **H2.4 frontend de auth** (login, registro, verificación, recuperación,
-  primer ingreso, guards de ruta y tests con msw).
-- El próximo hito (H3) es la agenda: especialidades, médicos, disponibilidad y
-  bloqueos.
+  contraseña** (recuperación por correo, primer ingreso y revocación de sesiones),
+  **H2.4 frontend de auth** (login, registro, verificación, recuperación,
+  primer ingreso, guards de ruta y tests con msw), y **H3 agenda y médicos**
+  (catálogo de especialidades, profesionales médicos, configuración de horarios habituales,
+  bloqueos de agenda con detección de turnos afectados y cálculo de disponibilidad).
+- El próximo hito (H4) son los turnos: reserva web y desde recepción, exclusion constraints
+  de concurrencia, y prevención de solapamientos.
 
 El repositorio incluye modelos, migración inicial, contratos base, autenticación y
 el entorno de desarrollo. **Todavía no incluye la lógica funcional de turnos.**

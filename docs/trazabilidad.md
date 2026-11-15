@@ -75,6 +75,21 @@ La UI reproduce RN-28 en el cliente, pero el servidor la vuelve a validar: los
 tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACION`.
 
 
+### H3 — agenda, especialidades y médicos
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-04 (consulta de disponibilidad) | `app/services/agenda_service.py::calcular_disponibilidad`, `GET /medicos/{id}/disponibilidad` | `test_agenda.py::test_consultar_disponibilidad_y_agenda` |
+| RF-17 (gestión de horarios y conflicto) | `app/services/agenda_service.py::configurar_horarios`, `GET/PUT /medicos/{id}/horarios` | `test_agenda.py::test_configurar_horarios_ok`, `test_agenda.py::test_cambio_horarios_afecta_turnos_rechazado` |
+| RF-18 (especialidades y médicos) | `especialidad_service.py`, `medico_service.py`, `/especialidades`, `/medicos` | `test_especialidades.py`, `test_medicos.py` |
+| RF-26 (bloqueos de agenda con turnos afectados) | `agenda_service.py::crear_bloqueo`, `POST /medicos/{id}/bloqueos` | `test_agenda.py::test_bloqueo_con_turnos_rechazado_y_bloqueo_ok` |
+| RN-06 (médico asociado a especialidad) | `Medico.id_especialidad`, `medico_service.py` | `test_medicos.py::test_crear_medico_admin` |
+| RN-07, RN-08 (horarios sin superposición interna) | `agenda_service.py::configurar_horarios` | `test_agenda.py::test_horarios_superpuestos_rechazados` |
+| RN-38 (bloqueos rechazan si hay turnos) | `agenda_service.py::crear_bloqueo` (HTTP 409) | `test_agenda.py::test_bloqueo_con_turnos_rechazado_y_bloqueo_ok` |
+| P-27 (horarios superpuestos rechazados) | — | `test_agenda.py::test_horarios_superpuestos_rechazados` |
+| P-28 (cambios de agenda con turnos afectados) | — | `test_agenda.py::test_cambio_horarios_afecta_turnos_rechazado` |
+| P-40 (bloqueo que solapa turnos existentes) | — | `test_agenda.py::test_bloqueo_con_turnos_rechazado_y_bloqueo_ok` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |

@@ -61,6 +61,7 @@ services:
       - ./backend:/workspace/backend
       - ./alembic.ini:/workspace/alembic.ini:ro
       - ./scripts:/workspace/scripts:ro
+      - ./backups:/workspace/backups
       # Sin esto `pytest` dentro del contenedor usaba la copia horneada en la
       # imagen y se perdían los ajustes de loop asyncio de `pytest.ini`.
       - ./pytest.ini:/workspace/pytest.ini:ro

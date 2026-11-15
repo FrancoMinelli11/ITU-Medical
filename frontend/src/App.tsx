@@ -1,5 +1,6 @@
 import { Link, Route, Routes } from "react-router-dom";
 
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { CambiarPasswordPage } from "@/features/auth/CambiarPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { PrimerIngresoPage } from "@/features/auth/PrimerIngresoPage";
@@ -28,25 +29,27 @@ function NoEncontrado() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<RutaPublica />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/registro" element={<RegistroPage />} />
-      </Route>
+    <ErrorBoundary>
+      <Routes>
+        <Route element={<RutaPublica />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegistroPage />} />
+        </Route>
 
-      {/* Abiertas con o sin sesión: se llega desde el enlace del correo y un
-          usuario ya autenticado también puede pedir el reenvío. */}
-      <Route path="/recuperar-password" element={<RecuperarPasswordPage />} />
-      <Route path="/restablecer-password" element={<RestablecerPasswordPage />} />
-      <Route path="/verificar-email" element={<VerificarEmailPage />} />
+        {/* Abiertas con o sin sesión: se llega desde el enlace del correo y un
+            usuario ya autenticado también puede pedir el reenvío. */}
+        <Route path="/recuperar-password" element={<RecuperarPasswordPage />} />
+        <Route path="/restablecer-password" element={<RestablecerPasswordPage />} />
+        <Route path="/verificar-email" element={<VerificarEmailPage />} />
 
-      <Route element={<RutaProtegida />}>
-        <Route path="/" element={<InicioPage />} />
-        <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
-        <Route path="/primer-ingreso" element={<PrimerIngresoPage />} />
-      </Route>
+        <Route element={<RutaProtegida />}>
+          <Route path="/" element={<InicioPage />} />
+          <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
+          <Route path="/primer-ingreso" element={<PrimerIngresoPage />} />
+        </Route>
 
-      <Route path="*" element={<NoEncontrado />} />
-    </Routes>
+        <Route path="*" element={<NoEncontrado />} />
+      </Routes>
+    </ErrorBoundary>
   );
 }

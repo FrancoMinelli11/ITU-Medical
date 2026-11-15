@@ -208,6 +208,26 @@ async def test_busqueda_por_dni_nombre_y_correo(client, sesion, fabrica) -> None
         assert [item["id_usuario"] for item in items] == [str(objetivo.id_usuario)], consulta
 
 
+async def test_busqueda_escapa_comodines_like(client, sesion, fabrica) -> None:
+    await _recepcion(fabrica, sesion)
+    await fabrica.crear(nombre="Paciente", apellido="Comun", email="comun@example.com")
+    especial = await fabrica.crear(
+        nombre="100%", apellido="Descuento", email="cien_porciento@example.com"
+    )
+
+    # Buscar literal '%' debe devolver solo el que tiene '%' en el nombre, no todos
+    res_porciento = await client.get("/api/v1/pacientes", params={"q": "%"}, headers=sesion.bearer)
+    items_porciento = res_porciento.json()["items"]
+    assert len(items_porciento) == 1
+    assert items_porciento[0]["id_usuario"] == str(especial.id_usuario)
+
+    # Buscar literal '_' debe devolver solo el que tiene '_' en el email
+    res_guion = await client.get("/api/v1/pacientes", params={"q": "cien_"}, headers=sesion.bearer)
+    items_guion = res_guion.json()["items"]
+    assert len(items_guion) == 1
+    assert items_guion[0]["id_usuario"] == str(especial.id_usuario)
+
+
 async def test_obtener_por_id(client, sesion, fabrica) -> None:
     await _recepcion(fabrica, sesion)
     alta = await client.post("/api/v1/pacientes", json=NUEVO, headers=sesion.mutacion())

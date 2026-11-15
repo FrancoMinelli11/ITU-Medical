@@ -157,6 +157,11 @@ async def crear_desde_recepcion(
     return _salida(paciente, usuario)
 
 
+def _escapar_like(texto: str) -> str:
+    """Escapa comodines % y _ para búsquedas ILIKE seguras."""
+    return texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _consulta_base() -> Select[Paciente, Usuario]:
     return (
         select(Paciente, Usuario)
@@ -169,8 +174,8 @@ async def listar(
     session: AsyncSession, *, q: str | None, page: int, page_size: int
 ) -> Pagina[PacienteOut]:
     consulta = _consulta_base()
-    if q:
-        patron = f"%{q.strip()}%"
+    if q and q.strip():
+        patron = f"%{_escapar_like(q.strip())}%"
         consulta = consulta.where(
             or_(
                 Usuario.dni.ilike(patron),
