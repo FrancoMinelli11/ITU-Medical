@@ -229,7 +229,7 @@ class FabricaUsuarios:
     ) -> Usuario:
         numero = self._siguiente()
         dni_final = dni or f"2{numero:07d}"
-        email_final = email or f"usuario{numero}@turnos.local"
+        email_final = email or f"usuario{numero}@example.com"
         # `password=None` modela una cuenta creada por recepción: contraseña
         # temporal = DNI literal (decisión Q1 = A).
         password_final = dni_final if password is None else password

@@ -30,7 +30,7 @@ async def _admin(fabrica, sesion):
 async def _crear_medico(client, sesion, fabrica) -> str:
     res_esp = await client.post(
         "/api/v1/especialidades",
-        json={"nombre": f"Esp-{now_utc().timestamp()}"},
+        json={"nombre": f"Esp-{int(now_utc().timestamp() * 1000)}"},
         headers=sesion.mutacion(),
     )
     id_esp = res_esp.json()["id_especialidad"]
@@ -38,14 +38,15 @@ async def _crear_medico(client, sesion, fabrica) -> str:
     alta = await client.post(
         "/api/v1/medicos",
         json={
-            "dni": f"{int(now_utc().timestamp()) % 89999999 + 10000000}",
-            "email": f"med-{now_utc().timestamp()}@turnos.local",
+            "dni": f"3{int(now_utc().timestamp() * 1000) % 8999999 + 1000000}",
+            "email": f"med-{int(now_utc().timestamp() * 1000)}@example.com",
             "nombre": "Doctor",
             "apellido": "Prueba",
             "id_especialidad": id_esp,
         },
         headers=sesion.mutacion(),
     )
+    assert alta.status_code == 201, alta.text
     return alta.json()["id_medico"]
 
 

@@ -7,6 +7,7 @@ from typing import Any
 
 from app.core.timezone import now_utc
 from app.db.models.enums import EstadoTurno, RolUsuario
+from app.db.models.paciente import Paciente
 from app.db.models.turno import Turno
 from app.db.session import SessionLocal
 
@@ -37,7 +38,7 @@ async def test_crear_medico_admin(client, sesion, fabrica) -> None:
 
     payload: dict[str, Any] = {
         "dni": "35111222",
-        "email": "medico.test@turnos.local",
+        "email": "medico.test@example.com",
         "nombre": "Esteban",
         "apellido": "Gómez",
         "id_especialidad": id_esp,
@@ -60,18 +61,18 @@ async def test_crear_medico_matricula_duplicada(client, sesion, fabrica) -> None
 
     p1 = {
         "dni": "35111333",
-        "email": "medico1@turnos.local",
+        "email": "medico1@example.com",
         "nombre": "Médico",
         "apellido": "Uno",
         "id_especialidad": id_esp,
         "matricula": "MN-99999",
     }
     r1 = await client.post("/api/v1/medicos", json=p1, headers=sesion.mutacion())
-    assert r1.status_code == 201
+    assert r1.status_code == 201, r1.text
 
     p2 = {
         "dni": "35111444",
-        "email": "medico2@turnos.local",
+        "email": "medico2@example.com",
         "nombre": "Médico",
         "apellido": "Dos",
         "id_especialidad": id_esp,
@@ -88,13 +89,14 @@ async def test_listar_y_buscar_medicos(client, sesion, fabrica) -> None:
 
     p = {
         "dni": "35888999",
-        "email": "traumato@turnos.local",
+        "email": "traumato@example.com",
         "nombre": "Hernán",
         "apellido": "Crespo",
         "id_especialidad": id_esp,
         "matricula": "MN-77777",
     }
-    await client.post("/api/v1/medicos", json=p, headers=sesion.mutacion())
+    res_crear = await client.post("/api/v1/medicos", json=p, headers=sesion.mutacion())
+    assert res_crear.status_code == 201, res_crear.text
 
     # Búsqueda por apellido
     res_busqueda = await client.get(
@@ -121,18 +123,18 @@ async def test_deshabilitar_medico_con_turnos_futuros_falla(client, sesion, fabr
         "/api/v1/medicos",
         json={
             "dni": "35000999",
-            "email": "neuro@turnos.local",
+            "email": "neuro@example.com",
             "nombre": "Claudio",
             "apellido": "Brito",
             "id_especialidad": id_esp,
         },
         headers=sesion.mutacion(),
     )
+    assert alta.status_code == 201, alta.text
     id_medico = alta.json()["id_medico"]
 
     # Crear un paciente y un turno futuro asignado al médico
     paciente_user = await fabrica.crear(rol=RolUsuario.PACIENTE)
-    from app.db.models.paciente import Paciente
 
     async with SessionLocal() as db:
         paciente = await db.scalar(
