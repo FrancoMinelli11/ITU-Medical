@@ -47,16 +47,23 @@ export interface Medico {
   activo: boolean;
 }
 
+export interface Pagina<T> {
+  items: T[];
+  page: number;
+  page_size: number;
+  total: number;
+  pages: number;
+}
+
 export interface SlotDisponibilidad {
   fecha_hora: string;
   duracion_minutos: number;
-  disponible: boolean;
 }
 
 export interface DisponibilidadResponse {
   id_medico: string;
-  desde: string;
-  hasta: string;
+  fecha_desde: string;
+  fecha_hasta: string;
   slots: SlotDisponibilidad[];
 }
 

@@ -17,7 +17,7 @@ export function InicioPage() {
 
   if (!usuario) return null;
 
-  const esPaciente = usuario.rol === "PACIENTE" || usuario.rol === "ADMINISTRADOR";
+  const esPaciente = usuario.rol === "PACIENTE";
   const esStaff = usuario.rol === "RECEPCIONISTA" || usuario.rol === "ADMINISTRADOR";
   const esMedico = usuario.rol === "MEDICO" || usuario.rol === "ADMINISTRADOR";
 

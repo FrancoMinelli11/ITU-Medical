@@ -22,10 +22,9 @@ describe("RecepcionPage", () => {
             id_medico: "m-1",
             fecha_hora: "2026-11-15T10:00:00Z",
             duracion_minutos: 30,
-            estado: "EN_ESPERA",
             fecha_hora_llegada: "2026-11-15T09:55:00Z",
-            orden_prioridad: 1,
-            esta_en_tolerancia: true,
+            orden_atencion: 1,
+            en_tolerancia: true,
             medico_nombre: "María",
             medico_apellido: "López",
             especialidad_nombre: "Pediatría",
@@ -54,25 +53,21 @@ describe("RecepcionPage", () => {
         HttpResponse.json(refreshDemo(usuarioDemo({ rol: "RECEPCIONISTA" }))),
       ),
       http.get("*/api/v1/recepcion/sala-espera", () => HttpResponse.json([])),
-      http.get("*/api/v1/pacientes", () =>
-        HttpResponse.json({
-          total: 1,
+      http.get("*/api/v1/pacientes", ({ request }) => {
+        // Regresión: el front debe enviar `q`, no `dni`.
+        expect(new URL(request.url).searchParams.get("q")).toBe("38999111");
+        const base = {
+          id_usuario: "u", email: "x@example.com", telefono: null,
+          fecha_nacimiento: null, habilitado: true, email_verificado: true,
+        };
+        return HttpResponse.json({
           items: [
-            {
-              id_paciente: "pac-123",
-              id_usuario: "u-123",
-              dni: "38999111",
-              email: "paciente@example.com",
-              nombre: "Federico",
-              apellido: "Ríos",
-              telefono: "1122334455",
-              fecha_nacimiento: null,
-              habilitado: true,
-              email_verificado: true,
-            },
+            { ...base, id_paciente: "pac-000", dni: "20000000", nombre: "Camila", apellido: "Duarte" },
+            { ...base, id_paciente: "pac-123", dni: "38999111", nombre: "Federico", apellido: "Ríos" },
           ],
-        }),
-      ),
+          page: 1, page_size: 20, total: 2, pages: 1,
+        });
+      }),
       http.get("*/api/v1/restricciones/paciente/pac-123", () =>
         HttpResponse.json({
           id_paciente: "pac-123",
@@ -96,5 +91,6 @@ describe("RecepcionPage", () => {
 
     expect(await screen.findByText(/federico ríos/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /sancionar \(usuario rojo\)/i })).toBeInTheDocument();
+    expect(screen.queryByText(/camila duarte/i)).not.toBeInTheDocument();
   });
 });

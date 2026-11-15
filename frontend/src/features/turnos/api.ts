@@ -3,6 +3,7 @@ import type {
   DisponibilidadResponse,
   Especialidad,
   Medico,
+  Pagina,
   RestriccionEstadoOut,
   TurnoResponse,
   TurnosListResponse,
@@ -20,8 +21,8 @@ export const turnosApi = {
     return clienteApi.post<TurnoResponse>("/turnos", datos);
   },
 
-  async cancelarHabitual(idTurno: string, detalle?: string): Promise<TurnoResponse> {
-    return clienteApi.post<TurnoResponse>(`/turnos/${idTurno}/cancelar`, { detalle });
+  async cancelarHabitual(idTurno: string, motivo?: string): Promise<TurnoResponse> {
+    return clienteApi.post<TurnoResponse>(`/turnos/${idTurno}/cancelar`, { motivo });
   },
 
   async solicitarCancelacionRapida(idTurno: string, motivo: string): Promise<unknown> {
@@ -32,18 +33,19 @@ export const turnosApi = {
     return clienteApi.get<Especialidad[]>("/especialidades");
   },
 
+  /** `GET /medicos` devuelve `{items, page, ...}`, no un array. */
   async obtenerMedicos(idEspecialidad?: string): Promise<Medico[]> {
-    const query = idEspecialidad ? `?id_especialidad=${idEspecialidad}` : "";
-    return clienteApi.get<Medico[]>(`/medicos${query}`);
+    const params = new URLSearchParams({ page_size: "100" });
+    if (idEspecialidad) params.set("id_especialidad", idEspecialidad);
+    const res = await clienteApi.get<Pagina<Medico>>(`/medicos?${params.toString()}`);
+    return res.items;
   },
 
-  async obtenerDisponibilidad(
-    idMedico: string,
-    desde: string,
-    hasta: string
-  ): Promise<DisponibilidadResponse> {
+  /** `fecha` es `YYYY-MM-DD` (día local de Buenos Aires). */
+  async obtenerDisponibilidad(idMedico: string, fecha: string): Promise<DisponibilidadResponse> {
+    const params = new URLSearchParams({ fecha_desde: fecha, fecha_hasta: fecha });
     return clienteApi.get<DisponibilidadResponse>(
-      `/medicos/${idMedico}/disponibilidad?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`
+      `/medicos/${idMedico}/disponibilidad?${params.toString()}`,
     );
   },
 

@@ -92,17 +92,24 @@ export function RecepcionPage() {
     setBuscandoPaciente(true);
     setError(null);
     setMensajeExito(null);
+    const q = dniBusqueda.trim();
     try {
-      const res = await recepcionApi.buscarPacientes(dniBusqueda.trim());
-      if (res.items.length > 0) {
-        const p = res.items[0];
+      const res = await recepcionApi.buscarPacientes(q);
+      // La búsqueda es parcial: se elige la coincidencia exacta de DNI, o la única que haya.
+      const p =
+        res.items.find((x) => x.dni === q) ?? (res.items.length === 1 ? res.items[0] : null);
+      if (p) {
         setPacienteSeleccionado(p);
         const est = await recepcionApi.obtenerEstadoRestriccion(p.id_paciente);
         setEsUsuarioRojo(est.es_usuario_rojo);
         setIdRestriccionActiva(est.restriccion_activa?.id_restriccion || null);
       } else {
         setPacienteSeleccionado(null);
-        setError("No se encontró ningún paciente con el DNI ingresado.");
+        setError(
+          res.items.length === 0
+            ? "No se encontró ningún paciente con el DNI ingresado."
+            : "Hay varias coincidencias: ingresá el DNI completo.",
+        );
       }
     } catch (err) {
       setError(mensajeDeError(err));
@@ -121,7 +128,7 @@ export function RecepcionPage() {
         dni: nuevoDni.trim(),
         nombre: nuevoNombre.trim(),
         apellido: nuevoApellido.trim(),
-        email: nuevoEmail.trim() || undefined,
+        email: nuevoEmail.trim(),
       });
       setPacienteSeleccionado(creado);
       setDniBusqueda(creado.dni);
@@ -178,7 +185,7 @@ export function RecepcionPage() {
     try {
       await recepcionApi.resolverSolicitudCancelacion(idSolicitud, {
         aprobada,
-        motivo_resolucion: motivo,
+        detalle: motivo,
       });
       setMensajeExito(
         aprobada
@@ -238,7 +245,7 @@ export function RecepcionPage() {
     try {
       const res = await recepcionApi.cerrarJornada();
       setResultadoCierre(
-        `Cierre completado: se marcaron ${res.turnos_marcados_ausentes} turnos como ausentes.`
+        `Cierre completado: se marcaron ${res.total_ausentes} turnos como ausentes.`
       );
     } catch (err) {
       setError(mensajeDeError(err));
@@ -387,7 +394,7 @@ export function RecepcionPage() {
                         <tr key={t.id_turno} className="hover:bg-slate-50/50">
                           <td className="py-3 px-4">
                             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-brand-700 font-bold text-xs">
-                              {t.orden_prioridad}
+                              {t.orden_atencion}
                             </span>
                           </td>
                           <td className="py-3 px-4 font-semibold text-slate-900">
@@ -409,7 +416,7 @@ export function RecepcionPage() {
                             {formatHora(t.fecha_hora_llegada)} hs
                           </td>
                           <td className="py-3 px-4">
-                            {t.esta_en_tolerancia ? (
+                            {t.en_tolerancia ? (
                               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 En tolerancia
                               </span>
@@ -567,9 +574,10 @@ export function RecepcionPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700">Correo Electrónico (opcional)</label>
+                      <label className="block text-xs font-semibold text-slate-700">Correo Electrónico</label>
                       <input
                         type="email"
+                        required
                         value={nuevoEmail}
                         onChange={(e) => setNuevoEmail(e.target.value)}
                         className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
@@ -701,7 +709,7 @@ export function RecepcionPage() {
                         {s.especialidad_nombre} · Dr(a). {s.medico_nombre} {s.medico_apellido} · Fecha: {s.turno_fecha_hora ? formatFechaHora(s.turno_fecha_hora) : "—"}
                       </p>
                       <p className="text-xs text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                        <span className="font-semibold">Motivo:</span> {s.motivo_paciente}
+                        <span className="font-semibold">Motivo:</span> {s.motivo}
                       </p>
                     </div>
 

@@ -15,8 +15,11 @@ export interface PacienteItem {
 }
 
 export interface PacientesListResponse {
-  total: number;
   items: PacienteItem[];
+  page: number;
+  page_size: number;
+  total: number;
+  pages: number;
 }
 
 export interface TurnoEnEsperaResponse {
@@ -24,11 +27,10 @@ export interface TurnoEnEsperaResponse {
   id_paciente: string;
   id_medico: string;
   fecha_hora: string;
-  duracion_minutos: number;
-  estado: string;
   fecha_hora_llegada: string;
-  orden_prioridad: number;
-  esta_en_tolerancia: boolean;
+  duracion_minutos: number;
+  orden_atencion: number;
+  en_tolerancia: boolean;
   medico_nombre: string;
   medico_apellido: string;
   especialidad_nombre: string;
@@ -41,29 +43,30 @@ export interface SolicitudCancelacionOut {
   id_solicitud: string;
   id_turno: string;
   id_paciente: string;
-  motivo_paciente: string;
+  motivo: string;
   estado: "PENDIENTE" | "APROBADA" | "RECHAZADA";
-  fecha_solicitud: string;
+  fecha_creacion: string;
   fecha_resolucion: string | null;
   id_usuario_resolucion: string | null;
-  motivo_resolucion: string | null;
-  paciente_nombre?: string;
-  paciente_apellido?: string;
-  paciente_dni?: string;
-  turno_fecha_hora?: string;
-  medico_nombre?: string;
-  medico_apellido?: string;
-  especialidad_nombre?: string;
+  detalle_resolucion: string | null;
+  paciente_nombre?: string | null;
+  paciente_apellido?: string | null;
+  paciente_dni?: string | null;
+  turno_fecha_hora?: string | null;
+  medico_nombre?: string | null;
+  medico_apellido?: string | null;
+  especialidad_nombre?: string | null;
 }
 
 export interface CierreJornadaResponse {
-  turnos_marcados_ausentes: number;
-  fecha_cierre: string;
+  total_ausentes: number;
+  turnos_afectados: string[];
 }
 
 export const recepcionApi = {
-  async buscarPacientes(dni?: string): Promise<PacientesListResponse> {
-    const query = dni ? `?dni=${encodeURIComponent(dni)}` : "";
+  /** `q` busca por DNI, nombre, apellido o correo (parcial, sin distinguir mayúsculas). */
+  async buscarPacientes(q?: string): Promise<PacientesListResponse> {
+    const query = q ? `?q=${encodeURIComponent(q)}` : "";
     return clienteApi.get<PacientesListResponse>(`/pacientes${query}`);
   },
 
@@ -71,7 +74,7 @@ export const recepcionApi = {
     dni: string;
     nombre: string;
     apellido: string;
-    email?: string;
+    email: string;
     telefono?: string;
     fecha_nacimiento?: string;
   }): Promise<PacienteItem> {
@@ -110,11 +113,11 @@ export const recepcionApi = {
 
   async resolverSolicitudCancelacion(
     idSolicitud: string,
-    datos: { aprobada: boolean; motivo_resolucion?: string }
+    datos: { aprobada: boolean; detalle?: string },
   ): Promise<SolicitudCancelacionOut> {
     return clienteApi.post<SolicitudCancelacionOut>(
       `/solicitudes-cancelacion/${idSolicitud}/resolver`,
-      datos
+      datos,
     );
   },
 

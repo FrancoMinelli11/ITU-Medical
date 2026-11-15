@@ -78,15 +78,13 @@ export function ReservarTurnoPage() {
       setSlotSeleccionado(null);
       return;
     }
-    async function cargarDisponibilidad() {
+        async function cargarDisponibilidad() {
       setCargandoSlots(true);
       setSlotSeleccionado(null);
       setError(null);
       try {
-        const desde = `${fechaSeleccionada}T00:00:00`;
-        const hasta = `${fechaSeleccionada}T23:59:59`;
-        const res = await turnosApi.obtenerDisponibilidad(idMedico, desde, hasta);
-        setSlots(res.slots.filter((s) => s.disponible));
+        const res = await turnosApi.obtenerDisponibilidad(idMedico, fechaSeleccionada);
+        setSlots(res.slots);
       } catch (err) {
         setError(mensajeDeError(err));
       } finally {
@@ -116,14 +114,13 @@ export function ReservarTurnoPage() {
   const medicoSeleccionado = medicos.find((m) => m.id_medico === idMedico);
   const especialidadSeleccionada = especialidades.find((e) => e.id_especialidad === idEspecialidad);
 
-  // Fechas disponibles: hoy + 1 hasta hoy + 14 días
-  const fechasDisponibles: string[] = [];
-  const hoy = new Date();
-  for (let i = 1; i <= 14; i++) {
-    const d = new Date(hoy);
-    d.setDate(hoy.getDate() + i);
-    fechasDisponibles.push(d.toISOString().split("T")[0]);
-  }
+    // Fechas disponibles: mañana hasta +14 días, en el día local de Buenos Aires.
+  const formatoDia = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+  const fechasDisponibles = Array.from({ length: 14 }, (_, i) =>
+    formatoDia.format(new Date(Date.now() + (i + 1) * 24 * 3600 * 1000)),
+  );
 
   if (cargandoInicial) {
     return (
@@ -260,7 +257,7 @@ export function ReservarTurnoPage() {
                     <option value="">Seleccioná una fecha...</option>
                     {fechasDisponibles.map((f) => (
                       <option key={f} value={f}>
-                        {formatFecha(`${f}T12:00:00`)}
+                        {formatFecha(`${f}T12:00:00-03:00`)}
                       </option>
                     ))}
                   </select>

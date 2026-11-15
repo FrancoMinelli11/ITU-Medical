@@ -51,15 +51,18 @@ export default function App() {
           <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
           <Route path="/primer-ingreso" element={<PrimerIngresoPage />} />
 
-          {/* Módulo Paciente */}
-          <Route path="/turnos" element={<MisTurnosPage />} />
-          <Route path="/turnos/reservar" element={<ReservarTurnoPage />} />
+          <Route element={<RutaProtegida roles={["PACIENTE"]} />}>
+            <Route path="/turnos" element={<MisTurnosPage />} />
+            <Route path="/turnos/reservar" element={<ReservarTurnoPage />} />
+          </Route>
 
-          {/* Módulo Recepción */}
-          <Route path="/recepcion" element={<RecepcionPage />} />
+          <Route element={<RutaProtegida roles={["RECEPCIONISTA", "ADMINISTRADOR"]} />}>
+            <Route path="/recepcion" element={<RecepcionPage />} />
+          </Route>
 
-          {/* Módulo Médico */}
-          <Route path="/medico" element={<MedicoPage />} />
+          <Route element={<RutaProtegida roles={["MEDICO", "ADMINISTRADOR"]} />}>
+            <Route path="/medico" element={<MedicoPage />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<NoEncontrado />} />
