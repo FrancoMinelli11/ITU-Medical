@@ -42,7 +42,7 @@ async def test_flags_de_cookies(client, sesion, fabrica) -> None:
 
     csrf = _crudo(respuesta, "csrf_token")
     assert "HttpOnly" not in csrf, "si fuera httpOnly el SPA no podría leerla"
-    assert "Path=/api/v1" in csrf
+    assert "Path=/;" in csrf, "el SPA lee la cookie desde rutas que no son /api/v1"
     assert "Max-Age=604800" in csrf
 
 

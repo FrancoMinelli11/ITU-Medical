@@ -10,9 +10,12 @@ las decisiones de diseño de la FASE 2, en [`docs/diseno.md`](docs/diseno.md).
 - FASE 2: diseño técnico y andamiaje (H1), Docker/CI (H1.5), **H2.1 auth-core**
   (login, refresh rotativo, CSRF, rate limiting, `/auth/me` y auditoría),
   **H2.2 registro/verificación/pacientes** (alta web y por recepción, correo de
-  verificación asíncrono, CRUD de pacientes) y **H2.3 recuperación/cambio de
-  contraseña** (recuperación por correo, primer ingreso y revocación de sesiones).
-- H2.4 (frontend de auth) está pendiente de aprobación.
+  verificación asíncrono, CRUD de pacientes), **H2.3 recuperación/cambio de
+  contraseña** (recuperación por correo, primer ingreso y revocación de sesiones)
+  y **H2.4 frontend de auth** (login, registro, verificación, recuperación,
+  primer ingreso, guards de ruta y tests con msw).
+- El próximo hito (H3) es la agenda: especialidades, médicos, disponibilidad y
+  bloqueos.
 
 El repositorio incluye modelos, migración inicial, contratos base, autenticación y
 el entorno de desarrollo. **Todavía no incluye la lógica funcional de turnos.**
@@ -38,7 +41,21 @@ El access token va **solo en memoria** del SPA (nunca `localStorage`). Toda muta
 necesita `X-CSRF-Token` igual a la cookie; las rutas de entrada
 (`/auth/login`, `/auth/registro`, `/auth/recuperar-password`,
 `/auth/restablecer-password`, `/auth/verificar-email`,
-`/auth/reenviar-verificacion`) están exentas.
+`/auth/reenviar-verificacion`) están exentas. La cookie `csrf_token` usa `Path=/`
+para que el SPA pueda leerla desde cualquier pantalla.
+
+### Pantallas del SPA
+
+| Ruta | Acceso | Contenido |
+|---|---|---|
+| `/login` | anónimos | DNI + contraseña; deriva a `/primer-ingreso` si corresponde |
+| `/registro` | anónimos | Alta de paciente con verificación de correo |
+| `/recuperar-password` | público | Correo + DNI, respuesta genérica |
+| `/restablecer-password` | público | Token del correo + contraseña nueva |
+| `/verificar-email` | público | Verificación automática y reenvío del enlace |
+| `/` | sesión | Inicio con datos de la cuenta, aviso de correo sin verificar y logout |
+| `/primer-ingreso` | sesión con cambio pendiente | CU-13, encierra al usuario hasta cambiarla |
+| `/cambiar-password` | sesión | Cambio voluntario (revoca las sesiones abiertas) |
 
 ```bash
 curl.exe -i -c cookies.txt http://localhost:8000/api/v1/auth/csrf

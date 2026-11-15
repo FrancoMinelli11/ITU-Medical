@@ -56,6 +56,24 @@ por los reales y se agrega el test que cubre cada requisito.
 | P-34 (recuperación con datos inexistentes) | — | `test_auth_recuperacion.py` |
 | P-35 (token de recuperación expirado) | — | `test_auth_recuperacion.py` |
 
+### H2.4 — frontend de autenticación
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-01 (registro web desde el SPA) | `frontend/src/features/auth/RegistroPage.tsx` | `RegistroPage.test.tsx` |
+| RF-19, RF-22 (login y cierre de sesión) | `LoginPage.tsx`, `AuthProvider.logout`, `InicioPage.tsx` | `LoginPage.test.tsx`, `App.test.tsx` |
+| RF-20 (verificación de correo) | `VerificarEmailPage.tsx` (token desde el query y reenvío) | `VerificarEmailPage.test.tsx` |
+| RF-21, CU-12 (recuperación desde el SPA) | `RecuperarPasswordPage.tsx`, `RestablecerPasswordPage.tsx` | `RecuperarPasswordPage.test.tsx`, `RestablecerPasswordPage.test.tsx` |
+| RF-23, RN-29, CU-13 (primer ingreso) | `PrimerIngresoPage.tsx` + guard de `debe_cambiar_password` | `PrimerIngresoPage.test.tsx`, `RutaProtegida.test.tsx` |
+| RN-28 (política reflejada en el cliente) | `features/auth/validacion.ts` (`passwordSchema`) | `RegistroPage.test.tsx` |
+| RNF-01, RNF-02 (tokens fuera de `localStorage`) | `AuthProvider` (access en un `ref`) y `api/client.ts` | `client.test.ts`, `App.test.tsx` |
+| RNF-10 (errores RFC 7807 en pantalla) | `lib/problem.ts` (`mensajeDeError`) | `client.test.ts`, páginas de auth |
+| **C3** (el SPA distingue sesión de cambio pendiente) | `routes/RutaProtegida.tsx` redirige a `/primer-ingreso` | `RutaProtegida.test.tsx` |
+| CSRF double-submit legible por el SPA | cookie `csrf_token` con `Path=/` + `api/client.ts` | `test_auth_cookies.py`, `client.test.ts` |
+
+La UI reproduce RN-28 en el cliente, pero el servidor la vuelve a validar: los
+tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACION`.
+
 
 Decisiones con impacto en trazabilidad:
 

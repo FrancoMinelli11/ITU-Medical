@@ -100,7 +100,7 @@ async def test_bootstrap_de_csrf(client) -> None:
     crudo = respuesta.headers["set-cookie"]
     assert crudo.startswith("csrf_token=")
     assert "HttpOnly" not in crudo
-    assert "Path=/api/v1" in crudo
+    assert "Path=/;" in crudo
     assert client.cookies.get("csrf_token")
 
 

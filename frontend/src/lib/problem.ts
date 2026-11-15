@@ -28,3 +28,13 @@ export class ApiProblem extends Error {
     this.errors = problem.errors;
   }
 }
+
+/** Texto para mostrar en pantalla a partir de cualquier error del cliente. */
+export function mensajeDeError(error: unknown): string {
+  if (error instanceof ApiProblem) {
+    const campos = error.errors?.map((item) => item.message).join(" ");
+    return campos ? `${error.detail} ${campos}` : error.detail;
+  }
+  if (error instanceof Error && error.message) return error.message;
+  return "Ocurrió un error inesperado. Intentá de nuevo.";
+}

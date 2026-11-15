@@ -26,5 +26,9 @@ export default defineConfig({
     setupFiles: "./src/test/setup.ts",
     globals: true,
     css: true,
+    testTimeout: 15000,
+    env: {
+      VITE_API_URL: "/api/v1",
+    },
   },
 });

@@ -1,35 +1,25 @@
 import { Link, Route, Routes } from "react-router-dom";
 
-function Inicio() {
-  return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-        FASE 2 — Andamiaje
-      </p>
-      <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
-        Sistema de Turnos
-      </h1>
-      <p className="mt-4 text-lg text-slate-600">
-        Gestión administrativa de turnos médicos. La interfaz funcional se implementa
-        en la FASE 3.
-      </p>
-      <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Estado del proyecto</h2>
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-slate-600">
-          <li>API base y health checks disponibles.</li>
-          <li>Migración inicial con exclusion constraints.</li>
-          <li>Diseño técnico en docs/diseno.md.</li>
-        </ul>
-      </div>
-    </main>
-  );
-}
+import { CambiarPasswordPage } from "@/features/auth/CambiarPasswordPage";
+import { LoginPage } from "@/features/auth/LoginPage";
+import { PrimerIngresoPage } from "@/features/auth/PrimerIngresoPage";
+import { RecuperarPasswordPage } from "@/features/auth/RecuperarPasswordPage";
+import { RegistroPage } from "@/features/auth/RegistroPage";
+import { RestablecerPasswordPage } from "@/features/auth/RestablecerPasswordPage";
+import { VerificarEmailPage } from "@/features/auth/VerificarEmailPage";
+import { InicioPage } from "@/features/inicio/InicioPage";
+import { RutaProtegida } from "@/routes/RutaProtegida";
+import { RutaPublica } from "@/routes/RutaPublica";
 
 function NoEncontrado() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-3xl font-bold text-slate-900">Página no encontrada</h1>
-      <Link className="mt-4 inline-block text-brand-600 underline" to="/">
+    <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center px-6 text-center">
+      <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">404</p>
+      <h1 className="mt-2 text-3xl font-bold text-slate-900">Página no encontrada</h1>
+      <p className="mt-3 text-slate-600">
+        El enlace puede estar mal escrito o la página ya no existe.
+      </p>
+      <Link className="mt-6 text-sm font-medium text-brand-600 underline" to="/">
         Volver al inicio
       </Link>
     </main>
@@ -39,7 +29,23 @@ function NoEncontrado() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Inicio />} />
+      <Route element={<RutaPublica />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/registro" element={<RegistroPage />} />
+      </Route>
+
+      {/* Abiertas con o sin sesión: se llega desde el enlace del correo y un
+          usuario ya autenticado también puede pedir el reenvío. */}
+      <Route path="/recuperar-password" element={<RecuperarPasswordPage />} />
+      <Route path="/restablecer-password" element={<RestablecerPasswordPage />} />
+      <Route path="/verificar-email" element={<VerificarEmailPage />} />
+
+      <Route element={<RutaProtegida />}>
+        <Route path="/" element={<InicioPage />} />
+        <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
+        <Route path="/primer-ingreso" element={<PrimerIngresoPage />} />
+      </Route>
+
       <Route path="*" element={<NoEncontrado />} />
     </Routes>
   );

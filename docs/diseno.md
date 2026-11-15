@@ -81,11 +81,16 @@ Cualquier otra transición devuelve `409` con código `TRANSICION_INVALIDA`.
 | Cookie | `HttpOnly` | `Path` | Vida | Propósito |
 |---|---|---|---|---|
 | `refresh_token` | sí | `/api/v1/auth` | 7 días | Sesión renovable. |
-| `csrf_token` | no | `/api/v1` | 7 días | Double-submit legible por el SPA. |
+| `csrf_token` | no | `/` | 7 días | Double-submit legible por el SPA. |
 
 `Secure` sale de `COOKIE_SECURE` (`false` en desarrollo y tests, `true` en
 producción). Ninguna cookie se lee desde JavaScript salvo `csrf_token`, que es
 justamente el token que hay que repetir en el header.
+
+La cookie de CSRF usa `Path=/` a propósito: `document.cookie` solo muestra las
+cookies cuyo `Path` es prefijo de la ruta del documento, y el SPA vive en `/`,
+`/login`, etc. Con `Path=/api/v1` el navegador la enviaría al backend pero el
+cliente no podría leerla, y toda mutación terminaría en `403 CSRF_INVALIDO`.
 
 ### 5.3 Tokens
 
@@ -296,12 +301,23 @@ Resto del contrato (FASE 3):
 
 ## 8. Frontend
 
-- `src/api/` centraliza el cliente y los tipos.
-- `src/features/` agrupa auth, turnos, agenda, recepción, médico y admin.
+- `src/api/client.ts` es el único cliente HTTP: adjunta `X-CSRF-Token` en los
+  métodos no idempotentes, el access token en memoria (`Authorization`) y, ante
+  un `401` en una ruta que no es `/auth/*`, renueva una vez y reintenta.
+- `src/features/` agrupa auth, inicio, turnos, agenda, recepción, médico y admin.
 - `src/lib/dates.ts` formatea en la zona local; la API entrega UTC.
-- Formularios con `react-hook-form` + `zod`.
-- Datos remotos con TanStack Query.
-- Rutas protegidas por rol en `src/routes/`.
+- Formularios con `react-hook-form` + `zod`; `src/features/auth/validacion.ts`
+  replica RN-28 (10 caracteres, letra y dígito) en el cliente para no esperar el
+  `400` del servidor.
+- Datos remotos con TanStack Query mediante `crearQueryClient()` (sin
+  reintentos: los errores se muestran).
+- `src/routes/`: `RutaProtegida` (mientras carga la sesión muestra espera; sin
+  sesión vuelve a `/login` recordando el destino; con `debe_cambiar_password`
+  encierra en `/primer-ingreso`; admite una lista de roles) y `RutaPublica`
+  (login y registro).
+- La sesión vive **solo en memoria**: `AuthProvider` pide `GET /auth/csrf` y
+  `POST /auth/refresh` al montar, y comparte el promise de refresco para que el
+  doble montaje de StrictMode no reutilice un refresh ya rotado.
 - Sin `localStorage` para tokens.
 
 ## 9. Pruebas y CI

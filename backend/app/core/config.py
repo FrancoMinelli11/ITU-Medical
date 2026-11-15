@@ -50,10 +50,11 @@ class Settings(BaseSettings):
     refresh_cookie_name: str = "refresh_token"
     csrf_cookie_name: str = "csrf_token"
     csrf_header_name: str = "X-CSRF-Token"
-    # El refresh solo se manda a /api/v1/auth; el CSRF a toda la API para que
-    # cualquier mutación pueda leerlo desde `document.cookie`.
+    # El refresh solo se manda a /api/v1/auth. El CSRF va con `Path=/` porque el
+    # SPA vive en `/login`, `/`, etc.: una cookie con `Path=/api/v1` no aparecería
+    # en `document.cookie` desde esas pantallas y el double-submit sería imposible.
     refresh_cookie_path: str = "/api/v1/auth"
-    csrf_cookie_path: str = "/api/v1"
+    csrf_cookie_path: str = "/"
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
     cookie_domain: str | None = None

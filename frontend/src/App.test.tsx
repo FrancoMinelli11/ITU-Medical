@@ -1,16 +1,19 @@
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { screen } from "@testing-library/react";
 
-import App from "./App";
+import { renderApp } from "@/test/render";
 
-test("muestra la pantalla inicial", () => {
-  render(
-    <MemoryRouter>
-      <App />
-    </MemoryRouter>,
-  );
+test("sin sesión, la raíz redirige al login", async () => {
+  renderApp("/");
 
   expect(
-    screen.getByRole("heading", { name: /sistema de turnos/i }),
+    await screen.findByRole("heading", { name: /iniciar sesión/i }),
+  ).toBeInTheDocument();
+});
+
+test("una ruta inexistente muestra el 404", async () => {
+  renderApp("/no-existe");
+
+  expect(
+    await screen.findByRole("heading", { name: /página no encontrada/i }),
   ).toBeInTheDocument();
 });
