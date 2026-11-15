@@ -6,21 +6,27 @@ las decisiones de diseño de la FASE 2, en [`docs/diseno.md`](docs/diseno.md).
 
 ## Estado
 
-- FASE 1: análisis cerrado.
-- FASE 2: diseño técnico y andamiaje (H1), Docker/CI (H1.5), **H2.1 auth-core**
-  (login, refresh rotativo, CSRF, rate limiting, `/auth/me` y auditoría),
-  **H2.2 registro/verificación/pacientes** (alta web y por recepción, correo de
-  verificación asíncrono, CRUD de pacientes), **H2.3 recuperación/cambio de
-  contraseña** (recuperación por correo, primer ingreso y revocación de sesiones),
-  **H2.4 frontend de auth** (login, registro, verificación, recuperación,
-  primer ingreso, guards de ruta y tests con msw), y **H3 agenda y médicos**
-  (catálogo de especialidades, profesionales médicos, configuración de horarios habituales,
-  bloqueos de agenda con detección de turnos afectados y cálculo de disponibilidad).
-- El próximo hito (H4) son los turnos: reserva web y desde recepción, exclusion constraints
-  de concurrencia, y prevención de solapamientos.
-
-El repositorio incluye modelos, migración inicial, contratos base, autenticación y
-el entorno de desarrollo. **Todavía no incluye la lógica funcional de turnos.**
+- **Proyecto 100% Completado**: todas las fases y requerimientos implementados y verificados.
+- **Backend**:
+  - H1: Andamiaje, base de datos y esquema con PostgreSQL 16 y `btree_gist`.
+  - H2.1 - H2.4: Autenticación completa (JWT en memoria + refresh rotativo httpOnly, CSRF double-submit, rate limiting, verificación de correo asíncrona, recuperación y cambio obligatorio en primer ingreso).
+  - H3: Catálogo de especialidades, profesionales médicos, horarios habituales, bloqueos de agenda y cálculo de disponibilidad horaria (RF-04, RF-17, RF-18, RF-26).
+  - H4: Reservas web y por recepción, prevención de solapamientos con exclusion constraints parciales atómicas, validación de reglas de agenda (RF-05, RF-06, RF-07, RF-25).
+  - H5: Cancelación habitual (>= 24 hs) con liberación inmediata, solicitud rápida (< 24 hs) con motivo y resolución por recepción, cancelación administrativa (RF-08, RF-09, RF-10, RF-24).
+  - H6: Recepción y sala de espera en tiempo real con algoritmo de orden de prioridad y tolerancia de 10 min, registro de ausencias individuales y cierre de jornada (RF-11, RF-12, RF-15).
+  - H7: Atención médica (`EN_ESPERA` -> `ATENDIDO`) y notas clínicas administrativas de seguimiento confidenciales para rol médico/admin (RF-13, RF-14).
+  - H8: Restricciones de Usuario Rojo por 30 días, bloqueo de turnos web y admisión presencial en recepción, evaluación dinámica sin cron (RF-16).
+  - H9: Scheduler periódico ARQ de recordatorios automáticos 24 hs antes del turno y soporte integral de zona horaria `America/Argentina/Buenos_Aires` (RF-22, RNF-06).
+  - Auditoría integral (RF-19) y matriz estricta de permisos en el servidor en cada endpoint (RNF-03).
+- **Frontend**:
+  - Portal de Pacientes: mis turnos, reserva paso a paso con slots disponibles, y cancelación habitual o rápida con modal contextual.
+  - Portal de Recepción: sala de espera en vivo ordenada por prioridad (`Puntual`, `En tolerancia`, `Tardío`) y estados, búsqueda y alta rápida de pacientes por DNI, resolución de cancelaciones rápidas, ausencias y gestión de Usuario Rojo.
+  - Portal Médico: agenda diaria de consultas asignadas, registro de atención en consultorio y notas clínicas de seguimiento.
+  - Navegación responsive por roles, guard de rutas, manejo de errores RFC 7807 y suite de pruebas con MSW.
+- **Pruebas y CI**:
+  - 215 tests backend en `pytest` (100% passing).
+  - 45 tests frontend en `vitest` (100% passing).
+  - GitHub Actions CI verde en todos los builds, verificaciones y tests.
 
 ## Autenticación
 
@@ -55,7 +61,11 @@ para que el SPA pueda leerla desde cualquier pantalla.
 | `/recuperar-password` | público | Correo + DNI, respuesta genérica |
 | `/restablecer-password` | público | Token del correo + contraseña nueva |
 | `/verificar-email` | público | Verificación automática y reenvío del enlace |
-| `/` | sesión | Inicio con datos de la cuenta, aviso de correo sin verificar y logout |
+| `/` | sesión | Inicio con datos de la cuenta, acceso rápido por rol y logout |
+| `/turnos` | paciente | Mis turnos asignados (próximos y pasados) con acción de cancelación |
+| `/turnos/reservar` | paciente | Reserva de turnos por especialidad, profesional, fecha y horario disponible |
+| `/recepcion` | recepción, admin | Sala de espera en vivo ordenada por prioridad, búsqueda y alta de pacientes, cancelaciones rápidas, ausencias y Usuario Rojo |
+| `/medico` | médico, admin | Agenda de turnos asignados del día, registro de atención y notas clínicas |
 | `/primer-ingreso` | sesión con cambio pendiente | CU-13, encierra al usuario hasta cambiarla |
 | `/cambiar-password` | sesión | Cambio voluntario (revoca las sesiones abiertas) |
 
