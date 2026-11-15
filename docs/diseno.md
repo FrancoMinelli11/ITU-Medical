@@ -184,6 +184,25 @@ real del rechazo (`USUARIO_INEXISTENTE`, `PASSWORD_INCORRECTA`,
   `email_verificado = true`, usa el DNI como contraseña temporal y exige el
   cambio en el primer ingreso (RF-02, RN-29).
 
+### 5.10 Recuperación y cambio de contraseña (RF-21, RF-23, C2)
+
+- `POST /auth/recuperar-password` pide **correo + DNI juntos** y responde siempre
+  lo mismo (`200`), exista o no el par, para no enumerar cuentas. Aplica RN-37
+  (3 solicitudes por correo por hora) y solo genera token si el usuario está
+  habilitado.
+- El token de recuperación es opaco, se guarda hasheado (SHA-256), expira en
+  1 hora, es de un solo uso y cada solicitud invalida el anterior (RN-31/32).
+- `POST /auth/restablecer-password` consume el token, valida RN-28, actualiza la
+  contraseña, deja `debe_cambiar_password = false` y **revoca todas las familias
+  de refresh del usuario** (C2).
+- `POST /auth/cambiar-password` (autenticado) exige la contraseña actual;
+  `POST /auth/primer-ingreso` (autenticado, `CU-13`) solo pide la nueva porque la
+  sesión ya se abrió con la temporal. Ambos revocan todas las sesiones abiertas:
+  el SPA debe volver al login después de cambiar la contraseña.
+- `PASSWORD_SIN_CAMBIOS` evita reutilizar la misma contraseña; el cambio queda en
+  `AUDITORIA` (`RECUPERACION_SOLICITADA`, `RECUPERACION_CONSUMIDA`,
+  `PASSWORD_CAMBIADA`, `PRIMER_INGRESO_COMPLETADO`).
+
 ## 6. Notificaciones
 
 - Se persisten en `notificacion` antes de encolarse.
@@ -240,7 +259,16 @@ Implementado en H2.2 (registro, verificación y pacientes):
 | `GET /pacientes/{id}` | Recepción/Admin | `200 PacienteOut` | `404 PACIENTE_NO_ENCONTRADO` |
 | `PATCH /pacientes/{id}` | Recepción/Admin + CSRF | `200 PacienteOut` | `400 VALIDACION`, `409 EMAIL_DUPLICADO`, `404 PACIENTE_NO_ENCONTRADO` |
 
-Resto del contrato (H2.3 en adelante):
+Implementado en H2.3 (recuperación y cambio de contraseña):
+
+| Método y ruta | Auth | Éxito | Errores propios |
+|---|---|---|---|
+| `POST /auth/recuperar-password` | — (sin CSRF) | `200 {mensaje}` (genérico) | `400 VALIDACION`, `429 RATE_LIMIT_EXCEDIDO` |
+| `POST /auth/restablecer-password` | — (sin CSRF) | `200 {mensaje}` | `400 TOKEN_INVALIDO`, `400 TOKEN_USADO`, `400 TOKEN_EXPIRADO`, `400 PASSWORD_SIN_CAMBIOS` |
+| `POST /auth/cambiar-password` | Bearer + CSRF | `204` | `400 PASSWORD_ACTUAL_INCORRECTA`, `400 PASSWORD_SIN_CAMBIOS`, `403 CSRF_INVALIDO` |
+| `POST /auth/primer-ingreso` | Bearer + CSRF | `204` | `400 PRIMER_INGRESO_YA_REALIZADO`, `400 PASSWORD_SIN_CAMBIOS` |
+
+Resto del contrato (FASE 3):
 
 | Método y ruta | Rol | Propósito |
 |---|---|---|
@@ -249,8 +277,6 @@ Resto del contrato (H2.3 en adelante):
 | `POST /auth/login` | Público | Login por DNI. |
 | `POST /auth/refresh`, `/auth/logout` | Sesión | Rotación/cierre. |
 | `GET /auth/me` | Autenticado | Perfil. |
-| `POST /auth/recuperar-password`, `/auth/restablecer-password` | Público | Recuperación. |
-| `POST /auth/cambiar-password`, `/auth/primer-ingreso` | Autenticado | Contraseña. |
 | `GET /pacientes/{id}/turnos` | Recepción/Admin/Paciente | Historial. |
 | `GET/POST/PATCH /pacientes/{id}/restricciones` | Recepción/Admin | Usuario rojo. |
 | `GET/POST/PATCH /especialidades` | Autenticado/Admin | Catálogo. |

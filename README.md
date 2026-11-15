@@ -8,11 +8,11 @@ las decisiones de diseño de la FASE 2, en [`docs/diseno.md`](docs/diseno.md).
 
 - FASE 1: análisis cerrado.
 - FASE 2: diseño técnico y andamiaje (H1), Docker/CI (H1.5), **H2.1 auth-core**
-  (login, refresh rotativo, CSRF, rate limiting, `/auth/me` y auditoría) y
+  (login, refresh rotativo, CSRF, rate limiting, `/auth/me` y auditoría),
   **H2.2 registro/verificación/pacientes** (alta web y por recepción, correo de
-  verificación asíncrono, CRUD de pacientes).
-- H2.3 (recuperación y primer ingreso) y H2.4 (frontend de auth) están pendientes
-  de aprobación.
+  verificación asíncrono, CRUD de pacientes) y **H2.3 recuperación/cambio de
+  contraseña** (recuperación por correo, primer ingreso y revocación de sesiones).
+- H2.4 (frontend de auth) está pendiente de aprobación.
 
 El repositorio incluye modelos, migración inicial, contratos base, autenticación y
 el entorno de desarrollo. **Todavía no incluye la lógica funcional de turnos.**
@@ -29,6 +29,10 @@ el entorno de desarrollo. **Todavía no incluye la lógica funcional de turnos.*
 | Registro web | `POST /api/v1/auth/registro` `{dni, email, password, nombre, apellido, ...}` → `201`; envía el correo de verificación (Mailpit en desarrollo) |
 | Verificar correo | `POST /api/v1/auth/verificar-email` `{token}` → `200`; reenvío con `POST /api/v1/auth/reenviar-verificacion` `{email}` (respuesta genérica, 3/hora) |
 | Pacientes | `GET/POST /api/v1/pacientes` y `GET/PATCH /api/v1/pacientes/{id}` con rol recepción/administrador |
+| Recuperar contraseña | `POST /api/v1/auth/recuperar-password` `{email, dni}` → `200` genérico; el enlace llega a Mailpit (3 solicitudes/hora) |
+| Restablecer | `POST /api/v1/auth/restablecer-password` `{token, password}` → `200`; revoca todas las sesiones |
+| Cambiar contraseña | `POST /api/v1/auth/cambiar-password` `{password_actual, password_nueva}` con Bearer + CSRF → `204` |
+| Primer ingreso | `POST /api/v1/auth/primer-ingreso` `{password_nueva}` con Bearer + CSRF → `204` |
 
 El access token va **solo en memoria** del SPA (nunca `localStorage`). Toda mutación
 necesita `X-CSRF-Token` igual a la cookie; las rutas de entrada

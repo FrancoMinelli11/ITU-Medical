@@ -85,6 +85,37 @@ class ReenviarVerificacionRequest(BaseModel):
     email: EmailNormalizado
 
 
+class RecuperarPasswordRequest(BaseModel):
+    """RF-21: el par correo + DNI se pide junto (respuesta genérica siempre)."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    email: EmailNormalizado
+    dni: str = Field(min_length=7, max_length=8, pattern=DNI_PATTERN)
+
+
+class RestablecerPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    token: str = Field(min_length=16, max_length=200)
+    password: PasswordFuerte
+
+
+class CambiarPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    password_actual: str = Field(min_length=1, max_length=128)
+    password_nueva: PasswordFuerte
+
+
+class PrimerIngresoRequest(BaseModel):
+    """CU-13: la sesión ya está autenticada con la contraseña temporal."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    password_nueva: PasswordFuerte
+
+
 class VerificacionResponse(BaseModel):
     email_verificado: bool
     mensaje: str

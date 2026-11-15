@@ -13,12 +13,16 @@ from app.core.exceptions import ApiError
 from app.core.security import create_access_token, generate_csrf_token
 from app.db.models.usuario import Usuario
 from app.schemas.auth import (
+    CambiarPasswordRequest,
     LoginRequest,
     LoginResponse,
     MensajeResponse,
+    PrimerIngresoRequest,
+    RecuperarPasswordRequest,
     ReenviarVerificacionRequest,
     RefreshResponse,
     RegistroRequest,
+    RestablecerPasswordRequest,
     UsuarioOut,
     VerificacionResponse,
     VerificarEmailRequest,
@@ -29,6 +33,8 @@ from app.services import (
     auth_service,
     notificacion_service,
     paciente_service,
+    password_service,
+    recuperacion_service,
     refresh_service,
     verificacion_service,
 )
@@ -118,6 +124,51 @@ async def reenviar_verificacion(
     return MensajeResponse(
         mensaje="Si el correo corresponde a una cuenta sin verificar, te enviamos un nuevo enlace."
     )
+
+
+@router.post(
+    "/recuperar-password",
+    response_model=MensajeResponse,
+    summary="Solicitar la recuperación de contraseña",
+)
+async def recuperar_password(
+    payload: RecuperarPasswordRequest,
+    request: Request,
+    session: SessionDep,
+    redis: RateLimitRedisDep,
+) -> MensajeResponse:
+    """RF-21: respuesta genérica siempre; si el par existe, se encola el correo."""
+    await recuperacion_service.solicitar(
+        session, redis=redis, email=payload.email, dni=payload.dni, request=request
+    )
+    return MensajeResponse(
+        mensaje=(
+            "Si los datos coinciden con una cuenta, te enviamos un correo para "
+            "restablecer la contraseña."
+        )
+    )
+
+
+@router.post(
+    "/restablecer-password",
+    response_model=MensajeResponse,
+    summary="Definir la nueva contraseña desde el enlace del correo",
+)
+async def restablecer_password(
+    payload: RestablecerPasswordRequest,
+    request: Request,
+    session: SessionDep,
+    redis: RefreshRedisDep,
+) -> MensajeResponse:
+    """Consume el token de un solo uso y revoca todas las sesiones abiertas (C2)."""
+    await recuperacion_service.restablecer(
+        session,
+        redis=redis,
+        token=payload.token,
+        password=payload.password,
+        request=request,
+    )
+    return MensajeResponse(mensaje="Contraseña actualizada. Iniciá sesión con la nueva.")
 
 
 @router.post("/login", response_model=LoginResponse, summary="Iniciar sesión")
@@ -255,3 +306,49 @@ async def me(usuario: CurrentUser, session: SessionDep) -> UsuarioOut:
     distinguir "sesión inválida" de "tenés que cambiar la contraseña".
     """
     return await auth_service.perfil(session, usuario)
+
+
+@router.post(
+    "/cambiar-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Cambiar la contraseña",
+)
+async def cambiar_password(
+    payload: CambiarPasswordRequest,
+    request: Request,
+    usuario: CurrentUser,
+    session: SessionDep,
+    redis: RefreshRedisDep,
+) -> None:
+    await password_service.cambiar(
+        session,
+        redis=redis,
+        usuario=usuario,
+        password_actual=payload.password_actual,
+        password_nueva=payload.password_nueva,
+        request=request,
+    )
+
+
+@router.post(
+    "/primer-ingreso",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Cambiar la contraseña en el primer ingreso",
+)
+async def primer_ingreso(
+    payload: PrimerIngresoRequest,
+    request: Request,
+    usuario: CurrentUser,
+    session: SessionDep,
+    redis: RefreshRedisDep,
+) -> None:
+    """CU-13: la contraseña temporal es el DNI, que ya se usó para entrar."""
+    await password_service.primer_ingreso(
+        session,
+        redis=redis,
+        usuario=usuario,
+        password_nueva=payload.password_nueva,
+        request=request,
+    )

@@ -42,13 +42,28 @@ por los reales y se agrega el test que cubre cada requisito.
 | P-41 (token válido/expirado/usado/inexistente y reenvío) | — | `test_auth_verificacion.py` |
 | P-43 (fallo de SMTP: la operación sigue y la fila queda `FALLIDA`) | — | `test_notificaciones.py` |
 
+### H2.3 — recuperación y cambio de contraseña
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-21, CU-12 (recuperación con correo + DNI) | `app/services/recuperacion_service.py`, `POST /auth/recuperar-password` y `/auth/restablecer-password` | `test_auth_recuperacion.py` |
+| RF-23, CU-13 (cambio obligatorio en el primer ingreso) | `app/services/password_service.py::primer_ingreso`, `POST /auth/primer-ingreso` | `test_auth_cambiar_password.py` |
+| RN-28 (política aplicada a la nueva contraseña) | `PasswordFuerte` en `RestablecerPasswordRequest`, `CambiarPasswordRequest` y `PrimerIngresoRequest` | `test_auth_recuperacion.py`, `test_auth_cambiar_password.py` |
+| RN-31, RN-32 (token hasheado, 1 h, uno vigente) | `recuperacion_service._generar` invalida el anterior; `restablecer` lo consume | `test_auth_recuperacion.py` |
+| RN-37 (3 solicitudes por correo por hora) | `recuperacion_service.solicitar` con `RateLimiter` | `test_auth_recuperacion.py::test_solicitud_tiene_rate_limit` |
+| **C2** (el restablecimiento revoca todas las sesiones) | `refresh_service.revocar_sesiones_usuario` en `recuperacion_service.restablecer` y `password_service._aplicar` | `test_auth_recuperacion.py::test_restablecer_revoca_las_sesiones`, `test_auth_cambiar_password.py::test_cambiar_password_revoca_las_sesiones` |
+| P-33 (primer login de cuenta de recepción) | — | `test_auth_cambiar_password.py` |
+| P-34 (recuperación con datos inexistentes) | — | `test_auth_recuperacion.py` |
+| P-35 (token de recuperación expirado) | — | `test_auth_recuperacion.py` |
+
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |
 |---|---|---|
 | **Q1 = A**: contraseña temporal = DNI literal | Excepción **documentada** a RN-28 para las cuentas creadas por recepción, porque RF-02, CU-13 y P-04 exigen que la primera credencial sea el DNI. RN-29 sigue vigente vía `debe_cambiar_password`. | `test_auth_primer_ingreso.py::test_login_con_password_temporal` |
 | **C1**: 401 uniforme en el login | Un DNI inexistente, una contraseña incorrecta y una cuenta deshabilitada devuelven lo mismo; la causa real solo queda en `AUDITORIA`. | `test_auth_login.py`, `test_auditoria.py` |
-| **C2**: el restablecimiento revoca todas las sesiones | `refresh_service.revocar_sesiones_usuario` (se usa en H2.3). | Pendiente en H2.3 |
+| **C2**: el restablecimiento revoca todas las sesiones | `refresh_service.revocar_sesiones_usuario` se llama en el restablecimiento y en cualquier cambio de contraseña; el refresh posterior devuelve `401 SESION_INVALIDA`. | `test_auth_recuperacion.py`, `test_auth_cambiar_password.py` |
 | **C3**: `/auth/me` responde 200 con `debe_cambiar_password` | El SPA distingue "sesión inválida" de "falta cambiar la contraseña"; con el flag activo el resto de los endpoints devuelve `403 CAMBIO_PASSWORD_REQUERIDO` (validado también e2e sobre `/pacientes`). | `test_auth_primer_ingreso.py`, `test_pacientes.py` |
 | Sin `slowapi` | `key_func` síncrona no puede leer el body y RN-37 cuenta intentos fallidos: se usan contadores propios en Redis. | `test_rate_limits.py` |
 | CSRF como dependencia global del router | Un endpoint nuevo queda protegido por defecto y `POST` a una ruta solo-`GET` sigue dando `405`. | `test_auth_csrf.py`, `test_health.py` |
@@ -91,7 +106,7 @@ Decisiones con impacto en trazabilidad:
 | P | Archivo |
 |---|---|
 | P-01..P-04, P-31, P-41, P-43 | `backend/tests/test_auth_registro.py`, `test_auth_verificacion.py`, `test_pacientes.py`, `test_notificaciones.py` (H2.2) |
-| P-05..P-07, P-33, P-36 | `backend/tests/test_auth_login.py`, `test_auth_primer_ingreso.py`, `test_rate_limits.py` (H2.1) |
+| P-05..P-07, P-33, P-36 | `backend/tests/test_auth_login.py`, `test_auth_primer_ingreso.py`, `test_auth_cambiar_password.py`, `test_rate_limits.py` (H2.1/H2.3) |
 | P-08..P-11, P-37, P-38, P-42 | `backend/tests/integration/test_turnos_reserva.py`, `test_turnos_concurrencia.py` |
 | P-12..P-16 | `backend/tests/integration/test_turnos_cancelacion.py` |
 | P-17..P-21 | `backend/tests/integration/test_turnos_llegada.py`, `test_turnos_orden.py`, `test_turnos_ausencia.py` |
@@ -101,7 +116,7 @@ Decisiones con impacto en trazabilidad:
 | P-29 | `backend/tests/test_permisos.py` |
 | P-30 | `backend/tests/test_auditoria.py` (H2.1; cada hito suma sus acciones) |
 | P-32, P-34, P-35 | `backend/tests/test_auth_recuperacion.py` (H2.3; P-32 se difiere a H4) |
-| P-39, P-43 | `backend/tests/integration/test_scheduler_recordatorio.py`, `test_smtp_failure.py` |
+| P-39 | `backend/tests/integration/test_scheduler_recordatorio.py` |
 | P-44 | `backend/tests/test_tokens.py` (parcial, H2.1) + `test_zona_horaria.py` (H4) |
 | P-45 | `backend/tests/integration/test_backup_restore.py` |
 

@@ -303,6 +303,7 @@ class BuzonDeCorreo:
     """
 
     ASUNTO_VERIFICACION = "Verificá tu correo para reservar turnos"
+    ASUNTO_RECUPERACION = "Restablecer tu contraseña"
 
     def __init__(self) -> None:
         self.envios: list[dict[str, str]] = []
@@ -317,10 +318,10 @@ class BuzonDeCorreo:
             if envio["destinatario"] == email and (asunto is None or envio["asunto"] == asunto)
         ]
 
-    def token(self, email: str) -> str:
-        """Token del último correo de verificación enviado a `email`."""
-        envios = self.de(email, self.ASUNTO_VERIFICACION)
-        assert envios, f"no se envió correo de verificación a {email}"
+    def token(self, email: str, asunto: str | None = None) -> str:
+        """Token del último correo (verificación por defecto) enviado a `email`."""
+        envios = self.de(email, asunto or self.ASUNTO_VERIFICACION)
+        assert envios, f"no se envió el correo esperado a {email}"
         encontrado = re.search(r"token=([A-Za-z0-9_\-]+)", envios[-1]["cuerpo"])
         assert encontrado, "el cuerpo del correo no incluye el enlace con token"
         return encontrado.group(1)
