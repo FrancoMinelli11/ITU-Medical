@@ -103,6 +103,7 @@ async def test_atender_turno_ok(client: Any, sesion: Any, fabrica: Any) -> None:
             duracion_minutos=30,
             estado=EstadoTurno.EN_ESPERA,
             fecha_hora_llegada=now_utc(),
+            id_usuario_creador=paciente_user.id_usuario,
         )
         db.add(turno)
         await db.commit()
@@ -152,6 +153,7 @@ async def test_atender_turno_invalido_falla(client: Any, sesion: Any, fabrica: A
             fecha_hora=to_local(now_utc()) + timedelta(hours=2),
             duracion_minutos=30,
             estado=EstadoTurno.RESERVADO,
+            id_usuario_creador=paciente_user.id_usuario,
         )
         db.add(turno)
         await db.commit()
@@ -164,7 +166,7 @@ async def test_atender_turno_invalido_falla(client: Any, sesion: Any, fabrica: A
         headers=sesion.mutacion(),
     )
     assert res_sin_llegada.status_code == 400
-    assert res_sin_llegada.json()["codigo"] == "TRANSICION_INVALIDA"
+    assert res_sin_llegada.json()["code"] == "TRANSICION_INVALIDA"
 
     # Ahora poner en EN_ESPERA
     async with SessionLocal() as db:
@@ -181,7 +183,7 @@ async def test_atender_turno_invalido_falla(client: Any, sesion: Any, fabrica: A
         headers=sesion.mutacion(),
     )
     assert res_otro_med.status_code == 403
-    assert res_otro_med.json()["codigo"] == "ACCESO_DENEGADO"
+    assert res_otro_med.json()["code"] == "ACCESO_DENEGADO"
 
 
 async def test_crear_y_modificar_nota_medica_ok(client: Any, sesion: Any, fabrica: Any) -> None:
@@ -264,7 +266,10 @@ async def test_acceso_notas_medicas_restringido(client: Any, sesion: Any, fabric
 
     # 1. Paciente intenta leer notas -> 403
     await sesion.login(paciente_user.dni, PASSWORD)
-    res_paciente_get = await client.get(f"/api/v1/notas/paciente/{id_paciente}")
+    res_paciente_get = await client.get(
+        f"/api/v1/notas/paciente/{id_paciente}",
+        headers=sesion.bearer,
+    )
     assert res_paciente_get.status_code == 403
 
     # Paciente intenta crear nota -> 403
@@ -277,7 +282,10 @@ async def test_acceso_notas_medicas_restringido(client: Any, sesion: Any, fabric
 
     # 2. Recepcionista intenta leer notas -> 403
     await sesion.login(recep_user.dni, PASSWORD)
-    res_recep_get = await client.get(f"/api/v1/notas/paciente/{id_paciente}")
+    res_recep_get = await client.get(
+        f"/api/v1/notas/paciente/{id_paciente}",
+        headers=sesion.bearer,
+    )
     assert res_recep_get.status_code == 403
 
     # 3. Otro médico intenta modificar la nota de otro médico -> 403
@@ -288,4 +296,4 @@ async def test_acceso_notas_medicas_restringido(client: Any, sesion: Any, fabric
         headers=sesion.mutacion(),
     )
     assert res_otro_med_put.status_code == 403
-    assert res_otro_med_put.json()["codigo"] == "ACCESO_DENEGADO"
+    assert res_otro_med_put.json()["code"] == "ACCESO_DENEGADO"
