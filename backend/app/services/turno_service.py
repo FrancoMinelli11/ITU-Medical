@@ -7,7 +7,7 @@ from uuid import UUID
 
 from redis.asyncio import Redis
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 from starlette.requests import Request
@@ -269,7 +269,7 @@ async def reservar_web(
 
     try:
         await session.flush()
-    except IntegrityError as exc:
+    except (IntegrityError, DBAPIError) as exc:
         await session.rollback()
         error_msg = str(exc)
         if "ex_turno_medico" in error_msg:
@@ -285,6 +285,13 @@ async def reservar_web(
                 "TURNO_SOLAPADO_PACIENTE",
                 "Turno superpuesto",
                 "Ya tenés otro turno reservado en ese mismo horario.",
+            ) from exc
+        if "deadlock" in error_msg.lower():
+            raise ApiError(
+                409,
+                "TURNO_OCUPADO",
+                "Horario no disponible",
+                "El profesional ya tiene un turno reservado en ese horario.",
             ) from exc
         raise ApiError(
             409,
@@ -397,7 +404,7 @@ async def reservar_recepcion(
 
     try:
         await session.flush()
-    except IntegrityError as exc:
+    except (IntegrityError, DBAPIError) as exc:
         await session.rollback()
         error_msg = str(exc)
         if "ex_turno_medico" in error_msg:
@@ -413,6 +420,13 @@ async def reservar_recepcion(
                 "TURNO_SOLAPADO_PACIENTE",
                 "Turno superpuesto",
                 "El paciente ya tiene otro turno reservado en ese mismo horario.",
+            ) from exc
+        if "deadlock" in error_msg.lower():
+            raise ApiError(
+                409,
+                "TURNO_OCUPADO",
+                "Horario no disponible",
+                "El profesional ya tiene un turno reservado en ese horario.",
             ) from exc
         raise ApiError(
             409,

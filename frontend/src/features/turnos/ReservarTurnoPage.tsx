@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { AppNavbar } from "@/components/layout/AppNavbar";
 import { Alerta } from "@/components/ui/Alerta";
-import { Boton } from "@/components/ui/Boton";
-import { Cargando } from "@/components/ui/Cargando";
+import { Icon } from "@/components/ui/Icon";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatFecha, formatHora } from "@/lib/dates";
 import { mensajeDeError } from "@/lib/problem";
@@ -31,7 +29,7 @@ export function ReservarTurnoPage() {
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
 
-  // Cargar especialidades iniciales
+  // Cargar catálogo de especialidades
   useEffect(() => {
     async function inicializar() {
       setCargandoInicial(true);
@@ -48,16 +46,20 @@ export function ReservarTurnoPage() {
     void inicializar();
   }, []);
 
-  // Cargar médicos al cambiar especialidad
+  // Cargar médicos de la especialidad
   useEffect(() => {
     if (!idEspecialidad) {
       setMedicos([]);
       setIdMedico("");
+      setFechaSeleccionada("");
+      setSlotSeleccionado(null);
+      setSlots([]);
       return;
     }
     async function cargarMedicos() {
       setCargandoMedicos(true);
       setIdMedico("");
+      setFechaSeleccionada("");
       setSlotSeleccionado(null);
       setSlots([]);
       try {
@@ -72,6 +74,14 @@ export function ReservarTurnoPage() {
     void cargarMedicos();
   }, [idEspecialidad]);
 
+  // Fechas disponibles: mañana hasta +14 días en Buenos Aires
+  const formatoDia = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+  const fechasDisponibles = Array.from({ length: 14 }, (_, i) =>
+    formatoDia.format(new Date(Date.now() + (i + 1) * 24 * 3600 * 1000)),
+  );
+
   // Cargar disponibilidad al seleccionar médico y fecha
   useEffect(() => {
     if (!idMedico || !fechaSeleccionada) {
@@ -79,7 +89,7 @@ export function ReservarTurnoPage() {
       setSlotSeleccionado(null);
       return;
     }
-        async function cargarDisponibilidad() {
+    async function cargarDisponibilidad() {
       setCargandoSlots(true);
       setSlotSeleccionado(null);
       setError(null);
@@ -113,90 +123,60 @@ export function ReservarTurnoPage() {
   };
 
   const medicoSeleccionado = medicos.find((m) => m.id_medico === idMedico);
-  const especialidadSeleccionada = especialidades.find((e) => e.id_especialidad === idEspecialidad);
-
-    // Fechas disponibles: mañana hasta +14 días, en el día local de Buenos Aires.
-  const formatoDia = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Argentina/Buenos_Aires",
-  });
-  const fechasDisponibles = Array.from({ length: 14 }, (_, i) =>
-    formatoDia.format(new Date(Date.now() + (i + 1) * 24 * 3600 * 1000)),
+  const especialidadSeleccionada = especialidades.find(
+    (e) => e.id_especialidad === idEspecialidad,
   );
 
-  if (cargandoInicial) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        <AppNavbar />
-        <div className="py-20 flex justify-center">
-          <Cargando texto="Cargando catálogo médico..." />
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <p>ITU MEDICAL</p>
+          <h1>Reservar Turno Médico</h1>
+          <span>Elegí la especialidad, el profesional y el horario de tu preferencia.</span>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <AppNavbar />
+      {error && <Alerta tipo="error">{error}</Alerta>}
 
-      <main className="mx-auto max-w-4xl space-y-6 px-6 py-10">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Reservar Turno Médico
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Elegí la especialidad, el profesional y el horario de tu preferencia.
-          </p>
+      {cargandoInicial ? (
+        <div className="space-y-4 py-4">
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-2xl" />
         </div>
-
-        {error && <Alerta tipo="error">{error}</Alerta>}
-
-        {exito ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center space-y-4">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white text-2xl font-bold">
-              ✓
-            </span>
-            <h2 className="text-2xl font-bold text-emerald-950">
-              ¡Turno reservado con éxito!
-            </h2>
-            <p className="text-sm text-emerald-800 max-w-md mx-auto">
-              Te enviamos un correo electrónico con los detalles del turno. Te recordamos presentarte con 10 minutos de anticipación.
-            </p>
-            <div className="pt-2 flex justify-center gap-4">
-              <Link to="/turnos">
-                <Boton className="w-auto">Ver mis turnos</Boton>
-              </Link>
-              <Boton
-                variante="secundario"
-                className="w-auto"
-                onClick={() => {
-                  setExito(false);
-                  setSlotSeleccionado(null);
-                  setIdMedico("");
-                  setIdEspecialidad("");
-                  setFechaSeleccionada("");
-                }}
-              >
-                Reservar otro turno
-              </Boton>
-            </div>
+      ) : exito ? (
+        <section className="panel p-8 text-center space-y-4 max-w-xl mx-auto">
+          <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center">
+            <Icon name="check" size={24} />
           </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-3">
-            {/* Formulario de selección */}
-            <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:col-span-2">
+          <h2 className="text-xl font-bold text-slate-900">¡Turno reservado con éxito!</h2>
+          <p className="text-sm text-slate-600">
+            Tu reserva fue confirmada. Podés revisarla y gestionarla en cualquier momento desde tu listado de próximos turnos.
+          </p>
+          <div className="pt-2 flex justify-center gap-3">
+            <Link to="/turnos" className="primary">
+              Ver mis turnos
+            </Link>
+          </div>
+        </section>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Formulario de Selección */}
+          <div className="lg:col-span-2 space-y-6">
+            <section className="panel p-6 space-y-5">
               {/* Paso 1: Especialidad */}
               <div>
                 <label
                   htmlFor="especialidad"
-                  className="block text-sm font-semibold text-slate-900"
+                  className="block text-sm font-semibold text-slate-900 mb-2"
                 >
-                  1. Especialidad Médica
+                  1. Especialidad médica
                 </label>
                 <select
                   id="especialidad"
                   value={idEspecialidad}
                   onChange={(e) => setIdEspecialidad(e.target.value)}
-                  className="mt-2 block w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                  className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 >
                   <option value="">Seleccioná una especialidad...</option>
                   {especialidades.map((esp) => (
@@ -212,14 +192,14 @@ export function ReservarTurnoPage() {
                 <div>
                   <label
                     htmlFor="medico"
-                    className="block text-sm font-semibold text-slate-900"
+                    className="block text-sm font-semibold text-slate-900 mb-2"
                   >
-                    2. Profesional
+                    2. Profesional médico
                   </label>
                   {cargandoMedicos ? (
-                    <Skeleton className="mt-2 h-11 w-full rounded-xl" />
+                    <Skeleton className="h-11 w-full rounded-xl" />
                   ) : medicos.length === 0 ? (
-                    <p className="text-sm text-slate-500 mt-2">
+                    <p className="text-sm text-slate-500 italic p-3 rounded-xl bg-slate-50 border border-slate-200">
                       No hay profesionales disponibles para esta especialidad.
                     </p>
                   ) : (
@@ -227,12 +207,12 @@ export function ReservarTurnoPage() {
                       id="medico"
                       value={idMedico}
                       onChange={(e) => setIdMedico(e.target.value)}
-                      className="mt-2 block w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                     >
                       <option value="">Seleccioná un profesional...</option>
                       {medicos.map((m) => (
                         <option key={m.id_medico} value={m.id_medico}>
-                          Dr(a). {m.nombre} {m.apellido} {m.matricula ? `(${m.matricula})` : ""}
+                          Dr(a). {m.nombre} {m.apellido} {m.matricula ? `· Matrícula: ${m.matricula}` : ""}
                         </option>
                       ))}
                     </select>
@@ -245,15 +225,15 @@ export function ReservarTurnoPage() {
                 <div>
                   <label
                     htmlFor="fecha"
-                    className="block text-sm font-semibold text-slate-900"
+                    className="block text-sm font-semibold text-slate-900 mb-2"
                   >
-                    3. Fecha de Atención
+                    3. Fecha de atención
                   </label>
                   <select
                     id="fecha"
                     value={fechaSeleccionada}
                     onChange={(e) => setFechaSeleccionada(e.target.value)}
-                    className="mt-2 block w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   >
                     <option value="">Seleccioná una fecha...</option>
                     {fechasDisponibles.map((f) => (
@@ -268,36 +248,33 @@ export function ReservarTurnoPage() {
               {/* Paso 4: Horarios */}
               {idMedico && fechaSeleccionada && (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-900 mb-2">
-                    4. Horarios Disponibles
-                  </label>
+                  <h4 className="time-title block text-sm font-semibold text-slate-900 mb-2">
+                    Horarios disponibles
+                  </h4>
+
                   {cargandoSlots ? (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 py-1">
-                      {Array.from({ length: 6 }).map((_, i) => (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 py-2">
+                      {Array.from({ length: 8 }).map((_, i) => (
                         <Skeleton key={i} className="h-10 rounded-xl" />
                       ))}
                     </div>
                   ) : slots.length === 0 ? (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 text-center">
+                    <div className="py-6 text-center text-sm text-slate-500 rounded-xl bg-slate-50 border border-slate-200">
                       No hay horarios libres para esta fecha. Probá seleccionando otro día.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {slots.map((slot) => {
-                        const esSeleccionado =
-                          slotSeleccionado?.fecha_hora === slot.fecha_hora;
+                    <div className="time-grid">
+                      {slots.map((s) => {
+                        const esSeleccionado = slotSeleccionado?.fecha_hora === s.fecha_hora;
+
                         return (
                           <button
-                            key={slot.fecha_hora}
+                            key={s.fecha_hora}
                             type="button"
-                            onClick={() => setSlotSeleccionado(slot)}
-                            className={`py-2 px-3 text-sm font-semibold rounded-lg border transition ${
-                              esSeleccionado
-                                ? "bg-brand-600 text-white border-brand-600 shadow"
-                                : "bg-white text-slate-700 border-slate-200 hover:border-brand-400 hover:bg-brand-50/50"
-                            }`}
+                            className={esSeleccionado ? "selected" : ""}
+                            onClick={() => setSlotSeleccionado(s)}
                           >
-                            {formatHora(slot.fecha_hora)}
+                            {formatHora(s.fecha_hora)} hs
                           </button>
                         );
                       })}
@@ -305,34 +282,42 @@ export function ReservarTurnoPage() {
                   )}
                 </div>
               )}
-            </div>
+            </section>
+          </div>
 
-            {/* Resumen de reserva */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between h-fit space-y-4">
+          {/* Resumen del Turno */}
+          <div className="lg:col-span-1">
+            <section className="panel p-6 flex flex-col justify-between h-fit space-y-5 sticky top-24">
               <div>
-                <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-                  Resumen del Turno
+                <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                  <Icon name="calendar" size={18} /> Resumen del Turno
                 </h3>
-                <dl className="mt-3 space-y-3 text-sm text-slate-600">
+                <dl className="mt-4 space-y-3 text-sm text-slate-600">
                   <div>
-                    <dt className="font-medium text-slate-500">Especialidad</dt>
-                    <dd className="font-semibold text-slate-900">
+                    <dt className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                      Especialidad
+                    </dt>
+                    <dd className="font-semibold text-slate-900 mt-0.5">
                       {especialidadSeleccionada?.nombre || "—"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-medium text-slate-500">Profesional</dt>
-                    <dd className="font-semibold text-slate-900">
+                    <dt className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                      Profesional
+                    </dt>
+                    <dd className="font-semibold text-slate-900 mt-0.5">
                       {medicoSeleccionado
                         ? `Dr(a). ${medicoSeleccionado.nombre} ${medicoSeleccionado.apellido}`
                         : "—"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-medium text-slate-500">Fecha y Hora</dt>
-                    <dd className="font-semibold text-slate-900">
+                    <dt className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                      Fecha y Hora
+                    </dt>
+                    <dd className="font-semibold text-slate-900 mt-0.5">
                       {slotSeleccionado
-                        ? formatFecha(slotSeleccionado.fecha_hora) + " " + formatHora(slotSeleccionado.fecha_hora) + " hs"
+                        ? `${formatFecha(slotSeleccionado.fecha_hora)} · ${formatHora(slotSeleccionado.fecha_hora)} hs`
                         : "—"}
                     </dd>
                   </div>
@@ -340,25 +325,27 @@ export function ReservarTurnoPage() {
               </div>
 
               <div className="pt-4 border-t border-slate-100 space-y-2">
-                <Boton
+                <button
+                  type="button"
+                  className="primary w-full justify-center py-2.5"
                   disabled={!slotSeleccionado || reservando}
-                  cargando={reservando}
-                  onClick={handleReservar}
+                  onClick={() => void handleReservar()}
                 >
-                  Confirmar Reserva
-                </Boton>
-                <Boton
-                  variante="secundario"
+                  {reservando ? "Reservando..." : "Confirmar Reserva"}
+                </button>
+                <button
+                  type="button"
+                  className="secondary w-full justify-center py-2 text-center text-sm"
                   onClick={() => navigate("/turnos")}
                   disabled={reservando}
                 >
                   Cancelar
-                </Boton>
+                </button>
               </div>
-            </div>
+            </section>
           </div>
-        )}
-      </main>
-    </div>
+        </div>
+      )}
+    </>
   );
 }

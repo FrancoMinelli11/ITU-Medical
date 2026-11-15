@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from "react-router-dom";
 
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { AppShell } from "@/components/layout/AppShell";
 import { CambiarPasswordPage } from "@/features/auth/CambiarPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { PrimerIngresoPage } from "@/features/auth/PrimerIngresoPage";
@@ -47,21 +48,25 @@ export default function App() {
         <Route path="/verificar-email" element={<VerificarEmailPage />} />
 
         <Route element={<RutaProtegida />}>
-          <Route path="/" element={<InicioPage />} />
           <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
           <Route path="/primer-ingreso" element={<PrimerIngresoPage />} />
 
-          <Route element={<RutaProtegida roles={["PACIENTE"]} />}>
-            <Route path="/turnos" element={<MisTurnosPage />} />
-            <Route path="/turnos/reservar" element={<ReservarTurnoPage />} />
-          </Route>
+          {/* Rutas principales envueltas en AppShell con Sidebar y Topbar */}
+          <Route element={<AppShell />}>
+            <Route path="/" element={<InicioPage />} />
 
-          <Route element={<RutaProtegida roles={["RECEPCIONISTA", "ADMINISTRADOR"]} />}>
-            <Route path="/recepcion" element={<RecepcionPage />} />
-          </Route>
+            <Route element={<RutaProtegida roles={["PACIENTE"]} />}>
+              <Route path="/turnos" element={<MisTurnosPage />} />
+              <Route path="/turnos/reservar" element={<ReservarTurnoPage />} />
+            </Route>
 
-          <Route element={<RutaProtegida roles={["MEDICO", "ADMINISTRADOR"]} />}>
-            <Route path="/medico" element={<MedicoPage />} />
+            <Route element={<RutaProtegida roles={["RECEPCIONISTA", "ADMINISTRADOR"]} />}>
+              <Route path="/recepcion" element={<RecepcionPage />} />
+            </Route>
+
+            <Route element={<RutaProtegida roles={["MEDICO", "ADMINISTRADOR"]} />}>
+              <Route path="/medico" element={<MedicoPage />} />
+            </Route>
           </Route>
         </Route>
 

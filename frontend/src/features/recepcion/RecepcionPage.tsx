@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 
-import { AppNavbar } from "@/components/layout/AppNavbar";
 import { Alerta } from "@/components/ui/Alerta";
-import { Boton } from "@/components/ui/Boton";
-import { Cargando } from "@/components/ui/Cargando";
+import { Icon } from "@/components/ui/Icon";
 import { ModalConfirmacion } from "@/components/ui/ModalConfirmacion";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { formatFechaHora, formatHora } from "@/lib/dates";
-import { mensajeDeError } from "@/lib/problem";
+import { Status } from "@/components/ui/Status";
 import type { TurnoResponse } from "@/features/turnos/types";
+import { formatPartesFecha } from "@/lib/dates";
+import { mensajeDeError } from "@/lib/problem";
 import {
   type PacienteItem,
   type SolicitudCancelacionOut,
@@ -17,7 +16,9 @@ import {
 } from "./api";
 
 export function RecepcionPage() {
-  const [pestaña, setPestaña] = useState<"espera" | "pacientes" | "solicitudes" | "cierre">("espera");
+  const [pestaña, setPestaña] = useState<
+    "espera" | "llegada" | "pacientes" | "solicitudes" | "cierre"
+  >("espera");
 
   // Estado Sala de Espera
   const [salaEspera, setSalaEspera] = useState<TurnoEnEsperaResponse[]>([]);
@@ -60,7 +61,7 @@ export function RecepcionPage() {
   const [ejecutandoCierre, setEjecutandoCierre] = useState(false);
   const [resultadoCierre, setResultadoCierre] = useState<string | null>(null);
 
-  // Estados de confirmación y modales UI accesibles
+  // Estados de confirmación accesibles
   const [idTurnoAusenteConfirmar, setIdTurnoAusenteConfirmar] = useState<string | null>(null);
   const [confirmarLevantarRojo, setConfirmarLevantarRojo] = useState(false);
   const [confirmarCierre, setConfirmarCierre] = useState(false);
@@ -98,105 +99,59 @@ export function RecepcionPage() {
   };
 
   useEffect(() => {
-    if (pestaña === "espera") void cargarSalaEspera();
-    if (pestaña === "solicitudes") void cargarSolicitudes();
-  }, [pestaña]);
+    void cargarSalaEspera();
+    void cargarSolicitudes();
+  }, []);
 
-  // Buscar paciente por DNI
-  const handleBuscarPaciente = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!dniBusqueda.trim()) return;
-    setBuscandoPaciente(true);
-    setError(null);
-    setMensajeExito(null);
-    const q = dniBusqueda.trim();
-    try {
-      const res = await recepcionApi.buscarPacientes(q);
-      // La búsqueda es parcial: se elige la coincidencia exacta de DNI, o la única que haya.
-      const p =
-        res.items.find((x: PacienteItem) => x.dni === q) ?? (res.items.length === 1 ? res.items[0] : null);
-      if (p) {
-        setPacienteSeleccionado(p);
-        const est = await recepcionApi.obtenerEstadoRestriccion(p.id_paciente);
-        setEsUsuarioRojo(est.es_usuario_rojo);
-        setIdRestriccionActiva(est.restriccion_activa?.id_restriccion || null);
-      } else {
-        setPacienteSeleccionado(null);
-        setError(
-          res.items.length === 0
-            ? "No se encontró ningún paciente con el DNI ingresado."
-            : "Hay varias coincidencias: ingresá el DNI completo.",
-        );
-      }
-    } catch (err) {
-      setError(mensajeDeError(err));
-    } finally {
-      setBuscandoPaciente(false);
-    }
-  };
-
-  // Alta de nuevo paciente
-  const handleCrearPaciente = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setGuardandoPaciente(true);
-    setError(null);
-    try {
-      const creado = await recepcionApi.crearPaciente({
-        dni: nuevoDni.trim(),
-        nombre: nuevoNombre.trim(),
-        apellido: nuevoApellido.trim(),
-        email: nuevoEmail.trim(),
-      });
-      setPacienteSeleccionado(creado);
-      setDniBusqueda(creado.dni);
-      setMostrarAlta(false);
-      setMensajeExito(`Paciente ${creado.nombre} ${creado.apellido} creado exitosamente.`);
-    } catch (err) {
-      setError(mensajeDeError(err));
-    } finally {
-      setGuardandoPaciente(false);
-    }
-  };
-
-  // Buscar turnos de hoy del paciente para registrar llegada
+  // Búsqueda para registrar llegada
   const handleBuscarPacienteLlegada = async (e: React.FormEvent) => {
     e.preventDefault();
-    const q = dniBusquedaLlegada.trim();
-    if (!q) return;
+    if (!dniBusquedaLlegada.trim()) return;
     setBuscandoPacienteLlegada(true);
     setError(null);
     setMensajeExito(null);
     setPacienteLlegada(null);
     setTurnosHoyPaciente([]);
+
     try {
-      const res = await recepcionApi.buscarPacientes(q);
-      const p =
-        res.items.find((x: PacienteItem) => x.dni === q) ?? (res.items.length === 1 ? res.items[0] : null);
-      if (!p) {
+      const res = await recepcionApi.buscarPacientes(dniBusquedaLlegada.trim());
+      const exacto = res.items.find(
+        (x: PacienteItem) => x.dni === dniBusquedaLlegada.trim(),
+      );
+
+      if (exacto) {
+        setPacienteLlegada(exacto);
+        setCargandoTurnosHoy(true);
+
+        const fechaHoy = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Argentina/Buenos_Aires",
+        }).format(new Date());
+
+        try {
+          const resTurnos = await recepcionApi.listarTurnosDelPaciente(
+            exacto.id_paciente,
+            fechaHoy,
+          );
+          const reservadosHoy = resTurnos.items.filter((t) => t.estado === "RESERVADO");
+          setTurnosHoyPaciente(reservadosHoy);
+        } finally {
+          setCargandoTurnosHoy(false);
+        }
+      } else {
         setError(
           res.items.length === 0
-            ? "No se encontró ningún paciente con el DNI ingresado."
+            ? "No se encontró ningún paciente con ese DNI."
             : "Hay varias coincidencias: ingresá el DNI completo.",
         );
-        return;
       }
-      setPacienteLlegada(p);
-      setCargandoTurnosHoy(true);
-      const formatoDia = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Argentina/Buenos_Aires",
-      });
-      const hoyBA = formatoDia.format(new Date());
-      const turnosRes = await recepcionApi.listarTurnosDelPaciente(p.id_paciente, hoyBA);
-      setTurnosHoyPaciente(turnosRes.items);
     } catch (err) {
       setError(mensajeDeError(err));
     } finally {
       setBuscandoPacienteLlegada(false);
-      setCargandoTurnosHoy(false);
     }
   };
 
-  // Registrar llegada de turno con un clic
+  // Registrar llegada de turno
   const handleRegistrarLlegadaTurno = async (idTurno: string) => {
     setRegistrandoLlegadaId(idTurno);
     setError(null);
@@ -213,7 +168,71 @@ export function RecepcionPage() {
     }
   };
 
-  // Marcar ausencia individual con confirmación accesible
+  // Búsqueda de paciente general
+  const handleBuscarPaciente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dniBusqueda.trim()) return;
+    setBuscandoPaciente(true);
+    setError(null);
+    setMensajeExito(null);
+    setPacienteSeleccionado(null);
+
+    try {
+      const res = await recepcionApi.buscarPacientes(dniBusqueda.trim());
+      const exacto = res.items.find((x: PacienteItem) => x.dni === dniBusqueda.trim());
+
+      if (exacto) {
+        setPacienteSeleccionado(exacto);
+        try {
+          const estadoRes = await recepcionApi.obtenerEstadoRestriccion(exacto.id_paciente);
+          setEsUsuarioRojo(estadoRes.es_usuario_rojo);
+          setIdRestriccionActiva(estadoRes.restriccion_activa?.id_restriccion || null);
+        } catch {
+          setEsUsuarioRojo(false);
+        }
+      } else {
+        setError(
+          res.items.length === 0
+            ? "No se encontró ningún paciente con ese DNI."
+            : "Hay varias coincidencias: ingresá el DNI completo.",
+        );
+      }
+    } catch (err) {
+      setError(mensajeDeError(err));
+    } finally {
+      setBuscandoPaciente(false);
+    }
+  };
+
+  // Crear paciente
+  const handleCrearPaciente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGuardandoPaciente(true);
+    setError(null);
+    try {
+      const nuevo = await recepcionApi.crearPaciente({
+        dni: nuevoDni.trim(),
+        nombre: nuevoNombre.trim(),
+        apellido: nuevoApellido.trim(),
+        email: nuevoEmail.trim().toLowerCase(),
+      });
+      setMostrarAlta(false);
+      setNuevoDni("");
+      setNuevoNombre("");
+      setNuevoApellido("");
+      setNuevoEmail("");
+      setPacienteSeleccionado(nuevo);
+      setMensajeExito(
+        `Paciente ${nuevo.nombre} ${nuevo.apellido} dado de alta con éxito. Contraseña inicial: ${nuevo.dni}`,
+      );
+    } catch (err) {
+      setError(mensajeDeError(err));
+    } finally {
+      setGuardandoPaciente(false);
+    }
+  };
+
+  // Marcar ausente
   const ejecutarMarcarAusente = async () => {
     if (!idTurnoAusenteConfirmar) return;
     setError(null);
@@ -227,13 +246,11 @@ export function RecepcionPage() {
     }
   };
 
-  // Resolver solicitud de cancelación
+  // Aprobar solicitud
   const handleAprobarSolicitud = async (idSolicitud: string) => {
     setError(null);
     try {
-      await recepcionApi.resolverSolicitudCancelacion(idSolicitud, {
-        aprobada: true,
-      });
+      await recepcionApi.resolverSolicitudCancelacion(idSolicitud, { aprobada: true });
       setMensajeExito("Solicitud aprobada: el turno fue cancelado y el horario liberado.");
       void cargarSolicitudes();
     } catch (err) {
@@ -241,6 +258,7 @@ export function RecepcionPage() {
     }
   };
 
+  // Rechazar solicitud
   const ejecutarRechazoSolicitud = async () => {
     if (!solicitudRechazarId || !motivoRechazoSolicitud.trim()) return;
     setResolviendoSolicitud(true);
@@ -261,7 +279,7 @@ export function RecepcionPage() {
     }
   };
 
-  // Clasificar usuario rojo
+  // Sancionar Usuario Rojo
   const handleClasificarRojo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pacienteSeleccionado) return;
@@ -284,7 +302,7 @@ export function RecepcionPage() {
     }
   };
 
-  // Levantar restricción
+  // Levantar Restricción
   const ejecutarLevantarRestriccion = async () => {
     if (!idRestriccionActiva) return;
     setError(null);
@@ -293,7 +311,7 @@ export function RecepcionPage() {
       setEsUsuarioRojo(false);
       setIdRestriccionActiva(null);
       setConfirmarLevantarRojo(false);
-      setMensajeExito("Restricción levantada exitosamente. El paciente puede operar con normalidad.");
+      setMensajeExito("Restricción levantada exitosamente.");
     } catch (err) {
       setError(mensajeDeError(err));
     }
@@ -306,10 +324,9 @@ export function RecepcionPage() {
     setResultadoCierre(null);
     try {
       const res = await recepcionApi.cerrarJornada();
-      setResultadoCierre(
-        `Cierre completado: se marcaron ${res.total_ausentes} turnos como ausentes.`
-      );
+      setResultadoCierre(`Cierre completado: se marcaron ${res.total_ausentes} turnos como ausentes.`);
       setConfirmarCierre(false);
+      void cargarSalaEspera();
     } catch (err) {
       setError(mensajeDeError(err));
     } finally {
@@ -318,114 +335,126 @@ export function RecepcionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AppNavbar />
-
-      <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
+    <>
+      <div className="page-title">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Módulo de Recepción
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Control de llegadas, sala de espera con prioridad inteligente, gestión de pacientes y cierre de jornada.
+          <p>ITU MEDICAL</p>
+          <h1>Módulo de Recepción</h1>
+          <span>Control de sala de espera, llegadas por DNI y gestión de pacientes.</span>
+        </div>
+      </div>
+
+      {error && <Alerta tipo="error">{error}</Alerta>}
+      {mensajeExito && <Alerta tipo="exito">{mensajeExito}</Alerta>}
+
+      {/* Barra de Estadísticas */}
+      <section className="stats">
+        <div>
+          <span className="stat-icon green">
+            <Icon name="people" />
+          </span>
+          <p>
+            En espera<b>{salaEspera.length} pacientes</b>
           </p>
+          <small>Ahora</small>
         </div>
 
-        {error && <Alerta tipo="error">{error}</Alerta>}
-        {mensajeExito && <Alerta tipo="exito">{mensajeExito}</Alerta>}
-
-        {/* Pestañas */}
-        <div className="flex border-b border-slate-200 space-x-6">
-          <button
-            type="button"
-            onClick={() => setPestaña("espera")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition ${
-              pestaña === "espera"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            Sala de Espera ({salaEspera.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setPestaña("pacientes")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition ${
-              pestaña === "pacientes"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            Pacientes & DNI
-          </button>
-          <button
-            type="button"
-            onClick={() => setPestaña("solicitudes")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition ${
-              pestaña === "solicitudes"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            Cancelaciones Rápidas ({solicitudes.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setPestaña("cierre")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition ${
-              pestaña === "cierre"
-                ? "border-brand-600 text-brand-600"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            Cierre de Jornada
-          </button>
+        <div>
+          <span className="stat-icon blue">
+            <Icon name="calendar" />
+          </span>
+          <p>
+            Cancelaciones<b>{solicitudes.length} pendientes</b>
+          </p>
+          <small>&lt; 24 hs</small>
         </div>
 
-        {/* PESTAÑA: SALA DE ESPERA (RF-12) */}
-        {pestaña === "espera" && (
-          <div className="space-y-6">
-            {/* Registro de llegada buscando por DNI */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div>
+          <span className="stat-icon amber">
+            <Icon name="clock" />
+          </span>
+          <p>
+            Cierre de Jornada<b>Marcado ausente</b>
+          </p>
+          <small>Final de turno</small>
+        </div>
+      </section>
+
+      {/* Pestañas de Administración */}
+      <div className="admin-tabs">
+        <button
+          type="button"
+          className={pestaña === "espera" ? "active" : ""}
+          onClick={() => setPestaña("espera")}
+        >
+          Sala de espera
+        </button>
+        <button
+          type="button"
+          className={pestaña === "pacientes" ? "active" : ""}
+          onClick={() => setPestaña("pacientes")}
+        >
+          Pacientes & DNI
+        </button>
+        <button
+          type="button"
+          className={pestaña === "solicitudes" ? "active" : ""}
+          onClick={() => setPestaña("solicitudes")}
+        >
+          Solicitudes {solicitudes.length > 0 && <b>{solicitudes.length}</b>}
+        </button>
+        <button
+          type="button"
+          className={pestaña === "cierre" ? "active" : ""}
+          onClick={() => setPestaña("cierre")}
+        >
+          Cierre de jornada
+        </button>
+      </div>
+
+      {/* PESTAÑA: SALA DE ESPERA (RF-12) & REGISTRO DE LLEGADA */}
+      {pestaña === "espera" && (
+        <div className="space-y-6">
+          {/* Registro rápido de llegada */}
+          <section className="panel">
+            <div className="panel-head">
               <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  Registrar Llegada de Paciente
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Buscá al paciente por DNI para ver sus turnos reservados de hoy y registrar su ingreso con un clic.
-                </p>
+                <h2>Registrar Llegada de Paciente</h2>
+                <p>Buscá al paciente por DNI para ver sus turnos de hoy y registrar su ingreso con un clic.</p>
               </div>
+            </div>
 
+            <div className="p-6 space-y-4">
               <form onSubmit={handleBuscarPacienteLlegada} className="flex flex-wrap items-center gap-3">
-                <input
-                  type="text"
-                  placeholder="Ingresá DNI del paciente..."
-                  value={dniBusquedaLlegada}
-                  onChange={(e) => setDniBusquedaLlegada(e.target.value)}
-                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 w-full sm:w-80 focus:border-brand-500 focus:ring-brand-500"
-                  required
-                />
-                <Boton
-                  type="submit"
-                  className="w-auto text-xs py-2 px-4"
-                  cargando={buscandoPacienteLlegada}
-                >
-                  Buscar Turnos de Hoy
-                </Boton>
+                <label className="flex items-center gap-2 border border-slate-300 rounded-xl px-3 py-2 w-full sm:w-80 bg-white">
+                  <Icon name="search" size={17} />
+                  <input
+                    type="text"
+                    placeholder="Ingresá DNI del paciente..."
+                    value={dniBusquedaLlegada}
+                    onChange={(e) => setDniBusquedaLlegada(e.target.value)}
+                    className="outline-none text-sm w-full"
+                    required
+                  />
+                </label>
+                <button type="submit" className="primary" disabled={buscandoPacienteLlegada}>
+                  {buscandoPacienteLlegada ? "Buscando..." : "Buscar turnos de hoy"}
+                </button>
               </form>
 
               {cargandoTurnosHoy && (
-                <div className="py-4 flex justify-center">
-                  <Cargando texto="Buscando turnos de hoy..." />
+                <div className="py-4 space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
               )}
 
               {pacienteLlegada && !cargandoTurnosHoy && (
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">
+                    <h3 className="font-bold text-slate-900">
                       {pacienteLlegada.nombre} {pacienteLlegada.apellido}
-                    </p>
+                    </h3>
                     <p className="text-xs text-slate-500">
                       DNI {pacienteLlegada.dni} · {pacienteLlegada.email}
                     </p>
@@ -437,542 +466,524 @@ export function RecepcionPage() {
                     </p>
                   ) : (
                     <div className="divide-y divide-slate-200">
-                      {turnosHoyPaciente.map((turno) => (
-                        <div
-                          key={turno.id_turno}
-                          className="py-2.5 flex flex-wrap items-center justify-between gap-3"
-                        >
-                          <div>
-                            <span className="font-semibold text-sm text-slate-900">
-                              {formatHora(turno.fecha_hora)} hs
-                            </span>
-                            <span className="text-xs text-slate-600 block">
-                              Dr(a). {turno.medico_nombre} {turno.medico_apellido} · {turno.especialidad_nombre}
-                            </span>
-                          </div>
-                          <Boton
-                            type="button"
-                            className="w-auto text-xs py-1.5 px-3 bg-brand-600 hover:bg-brand-700"
-                            cargando={registrandoLlegadaId === turno.id_turno}
-                            onClick={() => handleRegistrarLlegadaTurno(turno.id_turno)}
+                      {turnosHoyPaciente.map((turno) => {
+                        const hora = formatPartesFecha(turno.fecha_hora).horaTexto;
+
+                        return (
+                          <div
+                            key={turno.id_turno}
+                            className="py-3 flex flex-wrap items-center justify-between gap-3"
                           >
-                            Registrar Llegada
-                          </Boton>
-                        </div>
-                      ))}
+                            <div>
+                              <span className="font-semibold text-sm text-slate-900">
+                                {hora} hs
+                              </span>
+                              <span className="text-xs text-slate-600 block">
+                                Dr(a). {turno.medico_nombre} {turno.medico_apellido} · {turno.especialidad_nombre}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="primary"
+                              disabled={registrandoLlegadaId === turno.id_turno}
+                              onClick={() => void handleRegistrarLlegadaTurno(turno.id_turno)}
+                            >
+                              {registrandoLlegadaId === turno.id_turno ? "Registrando..." : "Registrar Llegada"}
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               )}
             </div>
+          </section>
 
-            {/* Tabla con Orden de Atención RF-12 */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Pacientes en Espera (Orden de Prioridad)
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Ordenados según el algoritmo de prioridad (RF-12): pacientes puntuales en tolerancia de 10 min por horario de turno; pacientes demorados por hora de llegada.
-                  </p>
-                </div>
-                <Boton
-                  variante="secundario"
-                  className="w-auto text-xs py-1.5 px-3"
-                  onClick={cargarSalaEspera}
-                  disabled={cargandoEspera}
-                >
-                  Actualizar
-                </Boton>
-              </div>
-
-              {cargandoEspera ? (
-                <div className="space-y-3 py-4">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : salaEspera.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-                  No hay pacientes en sala de espera en este momento.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-600">
-                    <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase font-bold text-slate-700">
-                      <tr>
-                        <th className="py-3 px-4">Prioridad</th>
-                        <th className="py-3 px-4">Paciente</th>
-                        <th className="py-3 px-4">Profesional</th>
-                        <th className="py-3 px-4">Turno Programado</th>
-                        <th className="py-3 px-4">Llegada</th>
-                        <th className="py-3 px-4">Condición</th>
-                        <th className="py-3 px-4 text-right">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {salaEspera.map((t) => (
-                        <tr key={t.id_turno} className="hover:bg-slate-50/50">
-                          <td className="py-3 px-4">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-brand-700 font-bold text-xs">
-                              {t.orden_atencion}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-semibold text-slate-900">
-                            {t.paciente_nombre} {t.paciente_apellido}
-                            <span className="block text-xs font-normal text-slate-500">
-                              DNI {t.paciente_dni}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            Dr(a). {t.medico_nombre} {t.medico_apellido}
-                            <span className="block text-xs text-slate-500">
-                              {t.especialidad_nombre}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-medium text-slate-900">
-                            {formatHora(t.fecha_hora)} hs
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">
-                            {formatHora(t.fecha_hora_llegada)} hs
-                          </td>
-                          <td className="py-3 px-4">
-                            {t.en_tolerancia ? (
-                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                En tolerancia
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                Demorado (+10m)
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Boton
-                              variante="peligro"
-                              className="w-auto text-xs py-1 px-2.5"
-                              onClick={() => setIdTurnoAusenteConfirmar(t.id_turno)}
-                            >
-                              Ausente
-                            </Boton>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+          {/* Tabla de sala de espera */}
+          <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Pacientes en Espera (Orden de Prioridad)</h2>
+              <p>Ordenados según algoritmo RF-12: puntuales en tolerancia de 10 min por horario de turno.</p>
+            </div>
+            <div className="panel-tools">
+              <button
+                type="button"
+                className="icon-button"
+                onClick={cargarSalaEspera}
+                disabled={cargandoEspera}
+                aria-label="Actualizar sala de espera"
+              >
+                <Icon name="refresh" />
+              </button>
             </div>
           </div>
-        )}
 
-        {/* PESTAÑA: PACIENTES & DNI */}
-        {pestaña === "pacientes" && (
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <form onSubmit={handleBuscarPaciente} className="flex items-center gap-3 w-full sm:w-96">
+          {cargandoEspera ? (
+            <div className="space-y-3 p-6">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : salaEspera.length === 0 ? (
+            <div className="empty-action">
+              <span>
+                <Icon name="people" size={28} />
+              </span>
+              <h3>No hay pacientes en espera</h3>
+              <p>Los pacientes ingresarán aquí al registrar su llegada en recepción.</p>
+            </div>
+          ) : (
+            <div className="patient-table">
+              <div className="table-row table-header">
+                <span>PACIENTE</span>
+                <span>TURNO</span>
+                <span>PROFESIONAL</span>
+                <span>LLEGADA</span>
+                <span>CONDICIÓN</span>
+                <span />
+              </div>
+
+              {salaEspera.map((t) => {
+                const iniciales = `${t.paciente_nombre.charAt(0)}${t.paciente_apellido.charAt(0)}`.toUpperCase();
+                const partesTurno = formatPartesFecha(t.fecha_hora);
+                const partesLlegada = formatPartesFecha(t.fecha_hora_llegada);
+
+                return (
+                  <div className="table-row" key={t.id_turno}>
+                    <span className="patient">
+                      <i>{iniciales}</i>
+                      <b>
+                        {t.paciente_nombre} {t.paciente_apellido}
+                        <small>DNI {t.paciente_dni}</small>
+                      </b>
+                    </span>
+
+                    <span>
+                      <b>{partesTurno.horaTexto} hs</b>
+                      <small>Prioridad #{t.orden_atencion}</small>
+                    </span>
+
+                    <span>
+                      <b>Dr(a). {t.medico_nombre} {t.medico_apellido}</b>
+                      <small>{t.especialidad_nombre}</small>
+                    </span>
+
+                    <span>
+                      <b>{partesLlegada.horaTexto} hs</b>
+                    </span>
+
+                    <span>
+                      <Status tone={t.en_tolerancia ? "green" : "amber"}>
+                        {t.en_tolerancia ? "En tolerancia" : "Demorado (+10m)"}
+                      </Status>
+                    </span>
+
+                    <span>
+                      <button
+                        type="button"
+                        className="row-action"
+                        onClick={() => setIdTurnoAusenteConfirmar(t.id_turno)}
+                      >
+                        Ausente
+                      </button>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+        </div>
+      )}
+
+      {/* PESTAÑA: PACIENTES & DNI */}
+      {pestaña === "pacientes" && (
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Búsqueda y Ficha de Pacientes</h2>
+              <p>Consultá el estado de la cuenta, restricciones y altas rápidas de recepción.</p>
+            </div>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => setMostrarAlta(true)}
+            >
+              <Icon name="plus" size={16} /> Alta de Paciente
+            </button>
+          </div>
+
+          <div className="p-6 space-y-6">
+            <form onSubmit={handleBuscarPaciente} className="flex items-center gap-3 w-full sm:w-96">
+              <label className="flex items-center gap-2 border border-slate-300 rounded-xl px-3 py-2 w-full bg-white">
+                <Icon name="search" size={17} />
                 <input
                   type="text"
                   placeholder="Ingresá DNI del paciente..."
                   value={dniBusqueda}
                   onChange={(e) => setDniBusqueda(e.target.value)}
-                  className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 w-full focus:border-brand-500 focus:ring-brand-500"
+                  className="outline-none text-sm w-full"
                 />
-                <Boton type="submit" className="w-auto" cargando={buscandoPaciente}>
-                  Buscar
-                </Boton>
-              </form>
+              </label>
+              <button type="submit" className="primary" disabled={buscandoPaciente}>
+                {buscandoPaciente ? "Buscando..." : "Buscar"}
+              </button>
+            </form>
 
-              <Boton
-                variante="secundario"
-                className="w-auto"
-                onClick={() => setMostrarAlta(true)}
-              >
-                + Alta de Paciente
-              </Boton>
-            </div>
-
-            {/* Ficha de paciente encontrado */}
             {pacienteSeleccionado && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
-                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">
+                    <h3 className="text-lg font-bold text-slate-900">
                       {pacienteSeleccionado.nombre} {pacienteSeleccionado.apellido}
-                    </h2>
-                    <p className="text-sm text-slate-500">
+                    </h3>
+                    <p className="text-xs text-slate-500">
                       DNI: {pacienteSeleccionado.dni} · Correo: {pacienteSeleccionado.email}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div>
                     {esUsuarioRojo ? (
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                          Usuario Rojo Activo
-                        </span>
-                        <Boton
-                          variante="secundario"
-                          className="w-auto text-xs py-1 px-3 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                        <Status tone="amber">Usuario Rojo Activo</Status>
+                        <button
+                          type="button"
+                          className="secondary"
                           onClick={() => setConfirmarLevantarRojo(true)}
                         >
                           Levantar Sanción
-                        </Boton>
+                        </button>
                       </div>
                     ) : (
-                      <Boton
-                        variante="peligro"
-                        className="w-auto text-xs py-1 px-3"
+                      <button
+                        type="button"
+                        className="secondary"
                         onClick={() => setMostrarModalRojo(true)}
                       >
                         Sancionar (Usuario Rojo)
-                      </Boton>
+                      </button>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs text-slate-600">
                   <div>
-                    <span className="text-xs font-semibold text-slate-400 block">DNI</span>
-                    <span className="font-medium text-slate-900">{pacienteSeleccionado.dni}</span>
+                    <span className="font-semibold block text-slate-400">DNI</span>
+                    <span className="font-bold text-slate-900">{pacienteSeleccionado.dni}</span>
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-slate-400 block">Teléfono</span>
-                    <span className="font-medium text-slate-900">{pacienteSeleccionado.telefono || "No registrado"}</span>
+                    <span className="font-semibold block text-slate-400">Teléfono</span>
+                    <span className="font-bold text-slate-900">{pacienteSeleccionado.telefono || "No registrado"}</span>
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-slate-400 block">Email Verificado</span>
-                    <span className="font-medium text-slate-900">
-                      {pacienteSeleccionado.email_verificado ? "Sí" : "Pendiente"}
-                    </span>
+                    <span className="font-semibold block text-slate-400">Email Verificado</span>
+                    <span className="font-bold text-slate-900">{pacienteSeleccionado.email_verificado ? "Sí" : "Pendiente"}</span>
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-slate-400 block">Estado de Cuenta</span>
-                    <span className="font-medium text-slate-900">
-                      {pacienteSeleccionado.habilitado ? "Habilitado" : "Deshabilitado"}
-                    </span>
+                    <span className="font-semibold block text-slate-400">Estado</span>
+                    <span className="font-bold text-slate-900">{pacienteSeleccionado.habilitado ? "Habilitado" : "Deshabilitado"}</span>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Modal Alta de Paciente */}
-            {mostrarAlta && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-                <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Dar de Alta Paciente en Recepción
-                  </h3>
-                  <form onSubmit={handleCrearPaciente} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700">DNI</label>
-                      <input
-                        type="text"
-                        required
-                        value={nuevoDni}
-                        onChange={(e) => setNuevoDni(e.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700">Nombre</label>
-                      <input
-                        type="text"
-                        required
-                        value={nuevoNombre}
-                        onChange={(e) => setNuevoNombre(e.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700">Apellido</label>
-                      <input
-                        type="text"
-                        required
-                        value={nuevoApellido}
-                        onChange={(e) => setNuevoApellido(e.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700">Correo Electrónico</label>
-                      <input
-                        type="email"
-                        required
-                        value={nuevoEmail}
-                        onChange={(e) => setNuevoEmail(e.target.value)}
-                        className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
-                      />
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-3">
-                      <Boton
-                        type="button"
-                        variante="secundario"
-                        className="w-auto text-xs"
-                        onClick={() => setMostrarAlta(false)}
-                      >
-                        Cancelar
-                      </Boton>
-                      <Boton
-                        type="submit"
-                        className="w-auto text-xs"
-                        cargando={guardandoPaciente}
-                      >
-                        Crear Paciente
-                      </Boton>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* Modal Usuario Rojo */}
-            {mostrarModalRojo && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-                <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Sancionar Paciente (Usuario Rojo)
-                  </h3>
-                  <p className="text-xs text-slate-600">
-                    La restricción bloquea la reserva web por 30 días pero permite reservas presenciales o telefónicas.
-                  </p>
-                  <form onSubmit={handleClasificarRojo} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700">Motivo</label>
-                      <textarea
-                        required
-                        rows={3}
-                        value={motivoRojo}
-                        onChange={(e) => setMotivoRojo(e.target.value)}
-                        placeholder="Ej: Inasistencias reiteradas sin aviso"
-                        className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700">Días de vigencia</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={365}
-                        value={diasRojo}
-                        onChange={(e) => setDiasRojo(Number(e.target.value))}
-                        className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2 pt-3">
-                      <Boton
-                        type="button"
-                        variante="secundario"
-                        className="w-auto text-xs"
-                        onClick={() => setMostrarModalRojo(false)}
-                      >
-                        Cancelar
-                      </Boton>
-                      <Boton
-                        type="submit"
-                        variante="peligro"
-                        className="w-auto text-xs"
-                        cargando={guardandoRojo}
-                      >
-                        Aplicar Sanción
-                      </Boton>
-                    </div>
-                  </form>
                 </div>
               </div>
             )}
           </div>
-        )}
+        </section>
+      )}
 
-        {/* PESTAÑA: CANCELACIONES RÁPIDAS (RF-09) */}
-        {pestaña === "solicitudes" && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+      {/* PESTAÑA: SOLICITUDES (<24 hs) */}
+      {pestaña === "solicitudes" && (
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h2>Solicitudes de Cancelación Rápida (&lt; 24 hs)</h2>
+              <p>Revisión y resolución de cancelaciones con poca anticipación.</p>
+            </div>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={cargarSolicitudes}
+              disabled={cargandoSolicitudes}
+              aria-label="Actualizar solicitudes"
+            >
+              <Icon name="refresh" />
+            </button>
+          </div>
+
+          {cargandoSolicitudes ? (
+            <div className="space-y-3 p-6">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : solicitudes.length === 0 ? (
+            <div className="empty-action">
+              <span>
+                <Icon name="check" size={28} />
+              </span>
+              <h3>No hay solicitudes pendientes</h3>
+              <p>Las cancelaciones solicitadas con menos de 24 hs aparecerán en esta sección.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 p-6">
+              {solicitudes.map((s) => (
+                <div key={s.id_solicitud} className="py-4 flex flex-wrap items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-slate-900">
+                      {s.paciente_nombre} {s.paciente_apellido} (DNI {s.paciente_dni})
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      {s.especialidad_nombre} · Dr(a). {s.medico_nombre} {s.medico_apellido}
+                    </p>
+                    <p className="text-xs text-slate-800 bg-slate-50 p-2 rounded border border-slate-200">
+                      <b>Motivo:</b> {s.motivo}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => void handleAprobarSolicitud(s.id_solicitud)}
+                    >
+                      Aprobar
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setSolicitudRechazarId(s.id_solicitud)}
+                    >
+                      Rechazar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* PESTAÑA: CIERRE DE JORNADA */}
+      {pestaña === "cierre" && (
+        <section className="panel p-8 text-center max-w-xl mx-auto space-y-4">
+          <h2>Cierre de Jornada de Atención</h2>
+          <p className="text-sm text-slate-600">
+            Al finalizar el día laboral, esta acción busca todos los turnos del día que quedaron en estado reservado y sin llegada registrada, marcándolos automáticamente como <b>AUSENTE</b>.
+          </p>
+
+          {resultadoCierre && <Alerta tipo="exito">{resultadoCierre}</Alerta>}
+
+          <div className="pt-4 flex justify-center">
+            <button
+              type="button"
+              className="primary"
+              onClick={() => setConfirmarCierre(true)}
+              disabled={ejecutandoCierre}
+            >
+              {ejecutandoCierre ? "Procesando..." : "Ejecutar Cierre de Jornada"}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* MODAL ALTA DE PACIENTE */}
+      {mostrarAlta && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Dar de Alta Paciente en Recepción</h3>
+            <form onSubmit={handleCrearPaciente} className="space-y-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  Solicitudes de Cancelación Rápida (&lt;24 hs)
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Revisión y resolución de cancelaciones solicitadas con poca anticipación.
-                </p>
+                <label className="block text-xs font-semibold text-slate-700">DNI</label>
+                <input
+                  type="text"
+                  required
+                  value={nuevoDni}
+                  onChange={(e) => setNuevoDni(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
+                />
               </div>
-              <Boton
-                variante="secundario"
-                className="w-auto text-xs py-1.5 px-3"
-                onClick={cargarSolicitudes}
-                disabled={cargandoSolicitudes}
-              >
-                Actualizar
-              </Boton>
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">Nombre</label>
+                <input
+                  type="text"
+                  required
+                  value={nuevoNombre}
+                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">Apellido</label>
+                <input
+                  type="text"
+                  required
+                  value={nuevoApellido}
+                  onChange={(e) => setNuevoApellido(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">Correo Electrónico</label>
+                <input
+                  type="email"
+                  required
+                  value={nuevoEmail}
+                  onChange={(e) => setNuevoEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
+                />
+              </div>
 
-            {cargandoSolicitudes ? (
-              <div className="py-8 flex justify-center">
-                <Cargando texto="Cargando solicitudes..." />
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setMostrarAlta(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="primary" disabled={guardandoPaciente}>
+                  {guardandoPaciente ? "Guardando..." : "Crear Paciente"}
+                </button>
               </div>
-            ) : solicitudes.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-                No hay solicitudes de cancelación rápida pendientes.
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {solicitudes.map((s) => (
-                  <div key={s.id_solicitud} className="py-4 flex flex-wrap items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <p className="font-semibold text-slate-900">
-                        {s.paciente_nombre} {s.paciente_apellido}{" "}
-                        <span className="text-xs text-slate-500 font-normal">
-                          (DNI {s.paciente_dni})
-                        </span>
-                      </p>
-                      <p className="text-xs text-slate-600">
-                        {s.especialidad_nombre} · Dr(a). {s.medico_nombre} {s.medico_apellido} · Fecha: {s.turno_fecha_hora ? formatFechaHora(s.turno_fecha_hora) : "—"}
-                      </p>
-                      <p className="text-xs text-slate-800 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                        <span className="font-semibold">Motivo:</span> {s.motivo}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Boton
-                        className="w-auto text-xs py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => handleAprobarSolicitud(s.id_solicitud)}
-                      >
-                        Aprobar
-                      </Boton>
-                      <Boton
-                        variante="peligro"
-                        className="w-auto text-xs py-1.5 px-3"
-                        onClick={() => setSolicitudRechazarId(s.id_solicitud)}
-                      >
-                        Rechazar
-                      </Boton>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* PESTAÑA: CIERRE DE JORNADA (RF-15) */}
-        {pestaña === "cierre" && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm space-y-5 max-w-xl mx-auto text-center">
-            <h2 className="text-xl font-bold text-slate-900">
-              Cierre de Jornada de Atención
-            </h2>
-            <p className="text-sm text-slate-600">
-              Al finalizar el día laboral, esta acción busca todos los turnos del día que quedaron en estado reservado y que no registraron su llegada, marcándolos automáticamente como <span className="font-semibold text-rose-600">AUSENTE</span>.
+      {/* MODAL SANCIONAR USUARIO ROJO */}
+      {mostrarModalRojo && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Sancionar Paciente (Usuario Rojo)</h3>
+            <p className="text-xs text-slate-600">
+              La restricción bloquea reservas por la web pero permite reservas presenciales o telefónicas.
             </p>
-
-            {resultadoCierre && <Alerta tipo="exito">{resultadoCierre}</Alerta>}
-
-            <div className="pt-4 flex justify-center">
-              <Boton
-                variante="peligro"
-                className="w-auto shadow-md"
-                onClick={() => setConfirmarCierre(true)}
-                cargando={ejecutandoCierre}
-              >
-                Ejecutar Cierre de Jornada
-              </Boton>
-            </div>
+            <form onSubmit={handleClasificarRojo} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">Motivo</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={motivoRojo}
+                  onChange={(e) => setMotivoRojo(e.target.value)}
+                  placeholder="Ej: Inasistencias reiteradas sin aviso"
+                  className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700">Días de vigencia</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={diasRojo}
+                  onChange={(e) => setDiasRojo(Number(e.target.value))}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setMostrarModalRojo(false)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="primary" disabled={guardandoRojo}>
+                  {guardandoRojo ? "Aplicando..." : "Aplicar Sanción"}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Modales de Confirmación Accesibles */}
-        <ModalConfirmacion
-          abierto={idTurnoAusenteConfirmar !== null}
-          titulo="Confirmar Ausencia"
-          mensaje="¿Confirmás que el paciente no se presentó al turno? Esta acción registrará la ausencia en el historial del paciente."
-          textoConfirmar="Marcar Ausente"
-          variante="peligro"
-          onConfirmar={ejecutarMarcarAusente}
-          onCancelar={() => setIdTurnoAusenteConfirmar(null)}
-        />
-
-        <ModalConfirmacion
-          abierto={confirmarLevantarRojo}
-          titulo="Levantar Sanción de Usuario Rojo"
-          mensaje="¿Confirmás que deseás levantar la restricción de usuario rojo para este paciente? El paciente podrá volver a reservar turnos por la web inmediatamente."
-          textoConfirmar="Levantar Sanción"
-          variante="primario"
-          onConfirmar={ejecutarLevantarRestriccion}
-          onCancelar={() => setConfirmarLevantarRojo(false)}
-        />
-
-        <ModalConfirmacion
-          abierto={confirmarCierre}
-          titulo="Confirmar Cierre de Jornada"
-          mensaje="¿Estás seguro de ejecutar el cierre de la jornada de atención? Todos los turnos de hoy que quedaron en estado reservado y sin registro de llegada se marcarán como AUSENTE."
-          textoConfirmar="Ejecutar Cierre"
-          variante="peligro"
-          cargando={ejecutandoCierre}
-          onConfirmar={ejecutarCierreJornada}
-          onCancelar={() => setConfirmarCierre(false)}
-        />
-
-        {solicitudRechazarId && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modal-rechazo-titulo"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
-          >
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
-              <h3 id="modal-rechazo-titulo" className="text-lg font-bold text-slate-900">
-                Rechazar Solicitud de Cancelación
-              </h3>
-              <p className="text-sm text-slate-600">
-                Por favor indicá el motivo del rechazo. El turno permanecerá en estado RESERVADO.
-              </p>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void ejecutarRechazoSolicitud();
-                }}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700">Motivo del rechazo</label>
-                  <textarea
-                    required
-                    rows={3}
-                    value={motivoRechazoSolicitud}
-                    onChange={(e) => setMotivoRechazoSolicitud(e.target.value)}
-                    placeholder="Ej: Solicitud fuera de término sin justificación médica de urgencia"
-                    className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm focus:border-brand-500 focus:ring-brand-500"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Boton
-                    type="button"
-                    variante="secundario"
-                    className="w-auto text-xs"
-                    onClick={() => {
-                      setSolicitudRechazarId(null);
-                      setMotivoRechazoSolicitud("");
-                    }}
-                    disabled={resolviendoSolicitud}
-                  >
-                    Cancelar
-                  </Boton>
-                  <Boton
-                    type="submit"
-                    variante="peligro"
-                    className="w-auto text-xs"
-                    cargando={resolviendoSolicitud}
-                  >
-                    Rechazar Solicitud
-                  </Boton>
-                </div>
-              </form>
-            </div>
+      {/* MODAL RECHAZO SOLICITUD */}
+      {solicitudRechazarId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Rechazar Solicitud de Cancelación</h3>
+            <p className="text-sm text-slate-600">
+              Indicá el motivo del rechazo. El turno permanecerá en estado RESERVADO.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void ejecutarRechazoSolicitud();
+              }}
+              className="space-y-4"
+            >
+              <textarea
+                required
+                rows={3}
+                value={motivoRechazoSolicitud}
+                onChange={(e) => setMotivoRechazoSolicitud(e.target.value)}
+                placeholder="Ej: Solicitud fuera de término"
+                className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm"
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setSolicitudRechazarId(null);
+                    setMotivoRechazoSolicitud("");
+                  }}
+                  disabled={resolviendoSolicitud}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="primary" disabled={resolviendoSolicitud}>
+                  Rechazar Solicitud
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </main>
-    </div>
+        </div>
+      )}
+
+      {/* Modales de Confirmación Accesibles */}
+      <ModalConfirmacion
+        abierto={idTurnoAusenteConfirmar !== null}
+        titulo="Confirmar Ausencia"
+        mensaje="¿Confirmás que el paciente no se presentó al turno? Esta acción registrará la ausencia en el historial del paciente."
+        textoConfirmar="Marcar Ausente"
+        variante="peligro"
+        onConfirmar={ejecutarMarcarAusente}
+        onCancelar={() => setIdTurnoAusenteConfirmar(null)}
+      />
+
+      <ModalConfirmacion
+        abierto={confirmarLevantarRojo}
+        titulo="Levantar Sanción de Usuario Rojo"
+        mensaje="¿Confirmás levantar la restricción de usuario rojo para este paciente?"
+        textoConfirmar="Levantar Sanción"
+        variante="primario"
+        onConfirmar={ejecutarLevantarRestriccion}
+        onCancelar={() => setConfirmarLevantarRojo(false)}
+      />
+
+      <ModalConfirmacion
+        abierto={confirmarCierre}
+        titulo="Confirmar Cierre de Jornada"
+        mensaje="¿Estás seguro de ejecutar el cierre? Todos los turnos de hoy reservados sin llegada se marcarán como AUSENTE."
+        textoConfirmar="Ejecutar Cierre"
+        variante="peligro"
+        cargando={ejecutandoCierre}
+        onConfirmar={ejecutarCierreJornada}
+        onCancelar={() => setConfirmarCierre(false)}
+      />
+    </>
   );
 }

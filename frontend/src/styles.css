@@ -1,23 +1,1508 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
-  color: #0f172a;
-  background-color: #f8fafc;
+  --ink: #172523;
+  --muted: #6d7b78;
+  --line: #dfe7e4;
+  --green: #167565;
+  --green-dark: #105e52;
+  --mint: #e8f5f1;
+  --cream: #f6f8f6;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: "DM Sans", sans-serif;
+  }
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  p {
+    margin: 0;
+  }
+}
+
+.app-shell {
   min-height: 100vh;
+  display: flex;
+}
+.sidebar {
+  width: 248px;
+  flex: 0 0 248px;
+  min-height: 100vh;
+  background: #fff;
+  border-right: 1px solid var(--line);
+  padding: 0 18px 20px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 40;
+}
+.sidebar-top {
+  height: 82px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #edf1ef;
+  margin: 0 4px 22px;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font: 700 18px "Manrope";
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+}
+.logo b {
+  color: var(--green);
+}
+.logo-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: var(--green);
+  position: relative;
+  box-shadow: 0 5px 12px #16756525;
+}
+.logo-mark i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8bd0bc;
+  right: 6px;
+  top: 6px;
+}
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.sidebar nav a,
+.sidebar nav button {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0 14px;
+  border-radius: 10px;
+  color: #657370;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  position: relative;
+}
+.sidebar nav a:hover,
+.sidebar nav button:hover {
+  background: #f3f7f5;
+  color: var(--ink);
+}
+.sidebar nav a.active,
+.sidebar nav button.active {
+  color: var(--green-dark);
+  background: var(--mint);
+}
+.sidebar nav a.active i,
+.sidebar nav button.active i {
+  position: absolute;
+  width: 3px;
+  height: 22px;
+  border-radius: 3px;
+  background: var(--green);
+  right: 0;
+}
+.sidebar-bottom {
+  margin-top: auto;
+}
+.help-card {
+  background: #f1f7f4;
+  border: 1px solid #deebe6;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.help-card > span {
+  background: white;
+  color: var(--green);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  margin-bottom: 9px;
+}
+.help-card b {
+  font: 700 13px "Manrope";
+}
+.help-card p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.help-card button {
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 8px 0 0;
+}
+.logout {
+  border: 0;
+  background: transparent;
+  display: flex;
+  gap: 10px;
+  color: #7a8683;
+  font-size: 13px;
+  padding: 20px 12px 2px;
+}
+.mobile-close {
+  display: none;
+}
+
+.main {
+  min-width: 0;
+  flex: 1;
+}
+.topbar {
+  height: 82px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 4.2%;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.topbar > .logo,
+.menu-button {
+  display: none;
+}
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.top-actions select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 27px 7px 10px;
+  color: #4f5f5b;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.notification,
+.icon-button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #53625f;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.notification i {
+  width: 6px;
+  height: 6px;
+  background: #e56d5b;
+  border-radius: 50%;
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  border: 1px solid white;
+}
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 8px;
+}
+.profile > span,
+.patient-avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #dceee8;
+  color: var(--green-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+.profile p {
+  display: flex;
+  flex-direction: column;
+  min-width: 118px;
+}
+.profile b {
+  font-size: 12px;
+}
+.profile small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 38px 4.6% 60px;
+}
+.page-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 27px;
+}
+.page-title p,
+.eyebrow {
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+}
+.page-title h1 {
+  font: 800 clamp(25px, 3vw, 33px) "Manrope";
+  letter-spacing: -1.2px;
+  margin-top: 4px;
+}
+.page-title > div > span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 5px;
+}
+.status {
+  border-radius: 99px;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  font-size: 10px !important;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.status.green {
+  color: #11705c;
+  background: #e5f5ef;
+}
+.status.green i {
+  background: #20a581;
+}
+.status.blue {
+  color: #336a92;
+  background: #eaf3f8;
+}
+.status.blue i {
+  background: #539bc8;
+}
+.status.amber {
+  color: #92651d;
+  background: #fff4d9;
+}
+.status.amber i {
+  background: #e0a83e;
+}
+.status.gray {
+  color: #697572;
+  background: #eef1f0;
+}
+.status.gray i {
+  background: #929d9a;
+}
+
+.next-card {
+  min-height: 258px;
+  background: linear-gradient(112deg, #105f53 0%, #187969 60%, #248475 100%);
+  color: white;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  box-shadow: 0 14px 35px #135e5223;
+  position: relative;
+}
+.next-card:after {
+  content: "";
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border: 1px solid #ffffff18;
+  border-radius: 50%;
+  right: 60px;
+  top: -130px;
+}
+.next-copy {
+  flex: 1;
+  padding: 29px 34px;
+  z-index: 1;
+}
+.next-copy .eyebrow {
+  color: #9ed8ca;
+}
+.next-copy h2 {
+  font: 800 25px "Manrope";
+  margin: 8px 0 10px;
+}
+.doctor {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.doctor span {
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  background: #ffffff20;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+}
+.next-time {
+  display: flex;
+  gap: 40px;
+  margin: 23px 0 18px;
+}
+.next-time > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.next-time span {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-weight: 700;
+}
+.next-time small {
+  color: #b7ddd5;
+  font-size: 9px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.text-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+.next-art {
+  width: 35%;
+  min-width: 250px;
+  background: #ffffff0b;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.calendar-art {
+  width: 144px;
+  height: 151px;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 18px 30px #073e3538;
+  transform: rotate(2deg);
+  overflow: hidden;
+  z-index: 2;
+}
+.calendar-art span {
+  width: 100%;
+  background: #d9eee8;
+  color: var(--green);
+  text-align: center;
+  padding: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.calendar-art strong {
+  font: 800 54px "Manrope";
+  line-height: 1.25;
+}
+.calendar-art small {
+  color: #7a8885;
+  font-size: 10px;
+  font-weight: 700;
+}
+.section-heading {
+  margin: 30px 0 14px;
+}
+.section-heading h2 {
+  font: 700 17px "Manrope";
+}
+.section-heading p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.quick-card {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 14px;
+  padding: 19px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 13px;
+  color: var(--ink);
+  box-shadow: 0 4px 12px #263a3510;
+  cursor: pointer;
+  text-decoration: none;
+}
+.quick-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px #263a3518;
+}
+.quick-card > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+}
+.quick-card.mint > span {
+  color: var(--green);
+  background: #e5f4ef;
+}
+.quick-card.blue > span {
+  color: #416f98;
+  background: #eaf2f8;
+}
+.quick-card.sand > span {
+  color: #9a6e35;
+  background: #f8f0e4;
+}
+.quick-card h3 {
+  font: 700 13px "Manrope";
+}
+.quick-card p {
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.quick-card > svg {
+  color: #9aa4a2;
+}
+.info-banner,
+.care-note {
+  margin-top: 16px;
+  border: 1px solid #dce9e5;
+  background: #eff7f4;
+  padding: 14px 17px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.info-banner > span,
+.care-note > span {
+  width: 30px;
+  height: 30px;
+  color: var(--green);
+  border-radius: 50%;
+  background: white;
+  display: grid;
+  place-items: center;
+}
+.info-banner div,
+.care-note div {
+  flex: 1;
+}
+.info-banner b,
+.care-note b {
+  font-size: 11px;
+}
+.info-banner p,
+.care-note p {
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 1px;
+}
+.info-banner button,
+.info-banner a {
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #e9eeec;
+  border-radius: 10px;
+}
+.tabs button {
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  padding: 8px 14px;
+  color: #697572;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tabs button.active {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 2px 8px #203f3820;
+}
+.tabs b {
+  background: #e8f2ef;
+  color: var(--green);
+  border-radius: 99px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  font-size: 9px;
+}
+.primary,
+.secondary,
+.row-action {
+  border-radius: 9px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.primary {
+  border: 1px solid var(--green);
+  color: #fff;
+  background: var(--green);
+  box-shadow: 0 4px 9px #16756520;
+}
+.primary:hover {
+  background: var(--green-dark);
+}
+.secondary {
+  border: 1px solid var(--line);
+  color: #43514e;
+  background: #fff;
+}
+.list-card,
+.booking-card,
+.panel,
+.clinical-panel,
+.agenda-panel {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px #263a350b;
+}
+.list-card {
+  padding: 8px 22px 6px;
+}
+.list-label {
+  font-size: 9px;
+  color: #8b9693;
+  letter-spacing: 1px;
+  font-weight: 800;
+  padding: 14px 0 5px;
+}
+.appointment-card {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  padding: 18px 3px;
+  border-bottom: 1px solid #edf1ef;
+}
+.appointment-card:last-child {
+  border-bottom: 0;
+}
+.date-tile {
+  width: 58px;
+  height: 62px;
+  border: 1px solid #d7e6e1;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.date-tile strong {
+  font: 800 24px "Manrope";
+  line-height: 1.4;
+}
+.date-tile span {
+  width: 100%;
+  background: #e8f4f0;
+  color: var(--green);
+  text-align: center;
+  font-size: 8px;
+  padding: 3px;
+  font-weight: 800;
+}
+.appointment-main {
+  flex: 1;
+}
+.appointment-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+.appointment-heading p {
+  font-size: 9px;
+  color: var(--green);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.appointment-heading h3 {
+  font: 700 15px "Manrope";
+  margin-top: 2px;
+}
+.appointment-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 9px;
+}
+.appointment-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.care-note {
+  background: #fffaf0;
+  border-color: #f0e4cb;
+}
+.care-note > span {
+  color: #a97931;
+}
+.care-note b {
+  color: #6f5227;
+}
+
+.steps {
+  display: flex;
+  max-width: 680px;
+  margin: 0 auto 22px;
+  justify-content: center;
+}
+.steps > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9aa4a2;
+  font-size: 10px;
+  font-weight: 700;
+  flex: 1;
+}
+.steps > div:not(:last-child):after {
+  content: "";
+  height: 1px;
+  background: #d9e1df;
+  flex: 1;
+  margin: 0 10px;
+}
+.steps span {
+  width: 25px;
+  height: 25px;
+  border: 1px solid #cbd5d2;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.steps .done {
+  color: var(--green);
+}
+.steps .done span {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+.booking-card {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 30px 34px;
+}
+.booking-card h2 {
+  font: 750 21px "Manrope";
+  margin: 6px 0;
+}
+.booking-card > p {
+  color: var(--muted);
+  font-size: 11px;
+}
+.select-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 22px;
+}
+.select-grid button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 11px;
+  min-height: 65px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--ink);
+}
+.select-grid button > span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--green);
+  background: var(--mint);
+}
+.select-grid button b {
+  flex: 1;
+  font-size: 11px;
+}
+.select-grid button > svg {
+  color: #a4aeab;
+}
+.select-grid button.selected {
+  border-color: #4a9b8d;
+  box-shadow: 0 0 0 2px #d8eee8;
+}
+.booking-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 26px;
+  border-top: 1px solid #edf1ef;
+  padding-top: 18px;
+}
+.doctor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 20px;
+}
+.doctor-list button {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 11px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  color: var(--ink);
+}
+.doctor-list button > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #416f68;
+  background: #dfeee9;
+  font-size: 10px;
+  font-weight: 800;
+}
+.doctor-list button div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: 11px;
+}
+.doctor-list b {
+  font-size: 11px;
+}
+.doctor-list small {
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 3px;
+}
+.doctor-list em {
+  color: #dfaa44;
+  font-style: normal;
+}
+.doctor-list button > i {
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+}
+.doctor-list button.selected {
+  border-color: #4a9b8d;
+  background: #f7fbfa;
+}
+.date-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+}
+.date-strip button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 9px;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.date-strip small,
+.date-strip span {
+  font-size: 8px;
+  color: var(--muted);
+}
+.date-strip b {
+  font: 750 18px "Manrope";
+}
+.date-strip button.selected {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+.date-strip button.selected small,
+.date-strip button.selected span {
+  color: #c4e5dc;
+}
+.time-title {
+  font: 700 11px "Manrope";
+  margin: 20px 0 9px;
+}
+.time-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.time-grid button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 9px;
+  font-size: 10px;
+  color: #4e5d59;
+}
+.time-grid button.selected {
+  border-color: var(--green);
+  background: var(--mint);
+  color: var(--green);
+  font-weight: 800;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 13px;
+  margin-bottom: 18px;
+}
+.stats > div {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 13px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.stat-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+}
+.stat-icon.green {
+  background: var(--mint);
+  color: var(--green);
+}
+.stat-icon.blue {
+  background: #eaf2f8;
+  color: #41779e;
+}
+.stat-icon.amber {
+  background: #fcf2df;
+  color: #aa7934;
+}
+.stats p {
+  display: flex;
+  flex-direction: column;
+  font-size: 9px;
+  color: var(--muted);
+  flex: 1;
+}
+.stats p b {
+  font: 700 14px "Manrope";
+  color: var(--ink);
+  margin-top: 2px;
+}
+.stats small {
+  font-size: 9px;
+  color: #8a9592;
+}
+.stats .positive {
+  color: var(--green);
+}
+.admin-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 15px;
+}
+.admin-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 0 2px 11px;
+  color: #788481;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-tabs button.active {
+  color: var(--green);
+  border-color: var(--green);
+}
+.admin-tabs b {
+  margin-left: 5px;
+  background: #f5e8e4;
+  color: #b15c4e;
+  border-radius: 99px;
+  padding: 1px 5px;
+  font-size: 8px;
+}
+.panel {
+  overflow: hidden;
+}
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid #edf1ef;
+}
+.panel-head h2 {
+  font: 700 16px "Manrope";
+}
+.panel-head p {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.panel-tools {
+  display: flex;
+  gap: 8px;
+}
+.panel-tools label {
+  width: 210px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  color: #82908c;
+}
+.panel-tools input {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  font-size: 10px;
+}
+.patient-table {
+  width: 100%;
+}
+.table-row {
+  display: grid;
+  grid-template-columns: 1.5fr 0.8fr 1fr 0.6fr 0.7fr 0.65fr;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-bottom: 1px solid #edf1ef;
+  font-size: 10px;
+}
+.table-row > span {
+  display: flex;
+  flex-direction: column;
+}
+.table-row small {
+  font-size: 8px;
+  color: #8b9693;
+  margin-top: 2px;
+}
+.table-header {
+  background: #f8faf9;
+  color: #84908d;
+  font-size: 8px;
+  font-weight: 800;
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+.patient {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 9px;
+}
+.patient > i {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  background: #e5f1ed;
+  color: var(--green);
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+}
+.patient > b {
+  display: flex;
+  flex-direction: column;
+}
+.row-action {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #4f5f5b;
+}
+.empty-action {
+  padding: 60px 20px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+.empty-action > span {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--mint);
+  color: var(--green);
+}
+.empty-action h3 {
+  font: 700 14px "Manrope";
+  margin: 13px 0 4px;
+}
+.empty-action p {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.consult-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 15px;
+}
+.agenda-panel {
+  padding: 17px;
+}
+.agenda-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.agenda-head h3 {
+  font: 700 14px "Manrope";
+}
+.agenda-head p {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.agenda-summary {
+  display: flex;
+  justify-content: space-between;
+  background: #f2f7f5;
+  border-radius: 8px;
+  padding: 9px 10px;
+  margin: 14px 0;
+  font-size: 9px;
+}
+.agenda-summary span {
+  color: var(--green);
+}
+.agenda-panel > button {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #edf1ef;
+  background: #fff;
+  padding: 13px 6px;
+  display: grid;
+  grid-template-columns: 42px 1fr 8px;
+  align-items: center;
+  text-align: left;
+  color: var(--ink);
+}
+.agenda-panel > button time {
+  font-size: 10px;
+  font-weight: 700;
+}
+.agenda-panel > button span {
+  display: flex;
+  flex-direction: column;
+}
+.agenda-panel > button b {
+  font-size: 10px;
+}
+.agenda-panel > button small {
+  font-size: 8px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.agenda-panel > button > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e6aa3f;
+}
+.agenda-panel > button.selected {
+  background: var(--mint);
+  border-radius: 9px;
+  border-color: transparent;
+  padding-left: 10px;
+  color: var(--green-dark);
+}
+.clinical-panel {
+  padding: 22px;
+}
+.clinical-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #edf1ef;
+}
+.patient-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+}
+.clinical-head > div:nth-child(2) {
+  flex: 1;
+}
+.clinical-head h2 {
+  font: 750 18px "Manrope";
+  margin: 2px 0;
+}
+.clinical-head p {
+  font-size: 9px;
+  color: var(--muted);
+}
+.clinical-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 16px 0;
+}
+.clinical-info div {
+  border-right: 1px solid #edf1ef;
+  display: flex;
+  flex-direction: column;
+}
+.clinical-info div:last-child {
+  border: 0;
+}
+.clinical-info small {
+  font-size: 8px;
+  color: #8a9693;
+  letter-spacing: 0.6px;
+}
+.clinical-info b {
+  font-size: 10px;
+  margin-top: 4px;
+}
+.notes-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 14px 0 10px;
+}
+.notes-head h3 {
+  font: 700 13px "Manrope";
+}
+.notes-head p {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.note {
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 13px;
+}
+.note > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.note > div > span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e6f2ee;
+  color: var(--green);
+  font-size: 8px;
+  font-weight: 800;
+}
+.note div p {
+  display: flex;
+  flex-direction: column;
+}
+.note b {
+  font-size: 9px;
+}
+.note small {
+  font-size: 8px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.note > p {
+  font-size: 10px;
+  color: #596763;
+  line-height: 1.55;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #edf1ef;
+}
+.clinical-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: -260px;
+    transition: left 0.25s;
+    box-shadow: 10px 0 30px #132a2520;
+  }
+  .sidebar.open {
+    left: 0;
+  }
+  .mobile-close {
+    display: grid;
+    place-items: center;
+    margin-left: auto;
+    border: 0;
+    background: transparent;
+    color: #66736f;
+  }
+  .topbar {
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 70px;
+  }
+  .topbar > .logo,
+  .menu-button {
+    display: flex;
+  }
+  .topbar > .logo .logo-mark {
+    display: none;
+  }
+  .topbar > .logo {
+    font-size: 16px;
+  }
+  .menu-button {
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    padding: 5px;
+  }
+  .profile p,
+  .profile > svg {
+    display: none;
+  }
+  .page {
+    padding: 28px 20px 45px;
+  }
+  .quick-grid {
+    grid-template-columns: 1fr;
+  }
+  .stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .patient-table {
+    overflow-x: auto;
+    display: block;
+  }
+  .table-row {
+    min-width: 800px;
+  }
+  .consult-layout {
+    grid-template-columns: 1fr;
+  }
+  .agenda-panel {
+    max-height: 330px;
+    overflow: auto;
+  }
+}
+@media (max-width: 600px) {
+  .top-actions select {
+    width: 93px;
+  }
+  .profile {
+    margin-left: 0;
+  }
+  .page-title {
+    align-items: flex-start;
+  }
+  .next-card {
+    min-height: auto;
+  }
+  .next-copy {
+    padding: 25px;
+  }
+  .next-art {
+    display: none;
+  }
+  .next-time {
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .toolbar {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .toolbar > .primary {
+    font-size: 0;
+    padding: 10px;
+  }
+  .toolbar > .primary svg {
+    width: 18px;
+  }
+  .appointment-card {
+    align-items: flex-start;
+  }
+  .appointment-heading {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .appointment-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .select-grid {
+    grid-template-columns: 1fr;
+  }
+  .booking-card {
+    padding: 24px 18px;
+  }
+  .steps b {
+    display: none;
+  }
+  .steps > div:not(:last-child):after {
+    margin: 0 6px;
+  }
+  .date-strip {
+    gap: 4px;
+  }
+  .time-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .stats {
+    grid-template-columns: 1fr;
+  }
+  .admin-tabs {
+    overflow-x: auto;
+  }
+  .admin-tabs button {
+    white-space: nowrap;
+  }
+  .panel-head {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .panel-tools label {
+    width: 150px;
+  }
+  .clinical-info {
+    grid-template-columns: 1fr;
+  }
+  .clinical-info div {
+    border: 0;
+    border-bottom: 1px solid #edf1ef;
+    padding-bottom: 8px;
+  }
+  .clinical-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .clinical-head .status {
+    margin-left: 58px;
+  }
+  .info-banner button {
+    display: none;
+  }
 }

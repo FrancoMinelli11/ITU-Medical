@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 
-import { AppNavbar } from "@/components/layout/AppNavbar";
 import { Alerta } from "@/components/ui/Alerta";
-import { Boton } from "@/components/ui/Boton";
-import { Cargando } from "@/components/ui/Cargando";
-import { formatFechaHora, formatHora } from "@/lib/dates";
+import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Status, type StatusTone } from "@/components/ui/Status";
+import type { EstadoTurno, TurnoResponse } from "@/features/turnos/types";
+import { formatPartesFecha } from "@/lib/dates";
 import { mensajeDeError } from "@/lib/problem";
-import type { TurnoResponse } from "@/features/turnos/types";
 import { type NotaSeguimientoOut, medicoApi } from "./api";
+
+const ESTADO_TONE: Record<EstadoTurno, StatusTone> = {
+  RESERVADO: "blue",
+  EN_ESPERA: "amber",
+  ATENDIDO: "green",
+  CANCELADO: "gray",
+  AUSENTE: "gray",
+};
 
 export function MedicoPage() {
   const [turnos, setTurnos] = useState<TurnoResponse[]>([]);
@@ -48,7 +56,7 @@ export function MedicoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cargar notas al seleccionar un turno/paciente
+  // Cargar notas al seleccionar paciente
   useEffect(() => {
     if (!turnoSeleccionado) {
       setNotas([]);
@@ -87,7 +95,7 @@ export function MedicoPage() {
     }
   };
 
-  // Crear nueva nota de seguimiento
+  // Crear nueva nota
   const handleCrearNota = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!turnoSeleccionado || !nuevaNota.trim()) return;
@@ -109,7 +117,7 @@ export function MedicoPage() {
     }
   };
 
-  // Modificar nota existente
+  // Guardar edición de nota
   const handleGuardarEdicion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!notaEnEdicion || !contenidoEdicion.trim()) return;
@@ -128,291 +136,249 @@ export function MedicoPage() {
   };
 
   const enEspera = turnos.filter((t) => t.estado === "EN_ESPERA");
-  const otrosTurnos = turnos.filter((t) => t.estado !== "EN_ESPERA");
+  const partesTurnoSel = turnoSeleccionado
+    ? formatPartesFecha(turnoSeleccionado.fecha_hora)
+    : null;
+  const nomPac = turnoSeleccionado?.paciente_nombre || "";
+  const apePac = turnoSeleccionado?.paciente_apellido || "";
+  const inicialesPaciente = turnoSeleccionado && (nomPac || apePac)
+    ? `${nomPac.charAt(0)}${apePac.charAt(0)}`.toUpperCase()
+    : "P";
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AppNavbar />
-
-      <main className="mx-auto max-w-6xl space-y-6 px-6 py-10">
+    <>
+      <div className="page-title">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Consultorio Médico
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Gestión de turnos de la jornada, registro de atención médica (RF-13) y notas confidenciales de seguimiento (RF-14).
-          </p>
+          <p>ITU MEDICAL</p>
+          <h1>Consultorio médico</h1>
+          <span>Agenda del día y seguimiento confidencial de pacientes.</span>
         </div>
+      </div>
 
-        {error && <Alerta tipo="error">{error}</Alerta>}
-        {mensajeExito && <Alerta tipo="exito">{mensajeExito}</Alerta>}
+      {error && <Alerta tipo="error">{error}</Alerta>}
+      {mensajeExito && <Alerta tipo="exito">{mensajeExito}</Alerta>}
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Columna Izquierda: Lista de Turnos */}
-          <div className="space-y-4 md:col-span-1">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">
-                Turnos de la Jornada
-              </h2>
-              <Boton
-                variante="secundario"
-                className="w-auto text-xs py-1 px-2.5"
-                onClick={cargarTurnos}
-                disabled={cargandoTurnos}
-              >
-                Actualizar
-              </Boton>
+      <div className="consult-layout">
+        {/* Panel Izquierdo: Agenda de Hoy */}
+        <aside className="agenda-panel">
+          <div className="agenda-head">
+            <div>
+              <h3>Agenda de hoy</h3>
+              <p>Turnos del profesional</p>
             </div>
-
-            {cargandoTurnos ? (
-              <Cargando texto="Cargando agenda..." />
-            ) : turnos.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-                No hay turnos asignados en este momento.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {enEspera.length > 0 && (
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-600">
-                      En Sala de Espera ({enEspera.length})
-                    </span>
-                    {enEspera.map((t) => (
-                      <button
-                        key={t.id_turno}
-                        type="button"
-                        onClick={() => setTurnoSeleccionado(t)}
-                        className={`w-full text-left p-3.5 rounded-xl border transition shadow-sm ${
-                          turnoSeleccionado?.id_turno === t.id_turno
-                            ? "bg-amber-50/80 border-amber-400 ring-2 ring-amber-300"
-                            : "bg-white border-amber-200 hover:border-amber-300"
-                        }`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <span className="font-bold text-slate-900 text-sm">
-                            {t.paciente_nombre} {t.paciente_apellido}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-800">
-                            {formatHora(t.fecha_hora)} hs
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Llegada: {t.fecha_hora_llegada ? formatHora(t.fecha_hora_llegada) + " hs" : "—"}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <div className="space-y-2 pt-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Otros Turnos ({otrosTurnos.length})
-                  </span>
-                  {otrosTurnos.map((t) => (
-                    <button
-                      key={t.id_turno}
-                      type="button"
-                      onClick={() => setTurnoSeleccionado(t)}
-                      className={`w-full text-left p-3.5 rounded-xl border transition shadow-sm ${
-                        turnoSeleccionado?.id_turno === t.id_turno
-                          ? "bg-brand-50 border-brand-400 ring-2 ring-brand-300"
-                          : "bg-white border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="font-semibold text-slate-800 text-sm">
-                          {t.paciente_nombre} {t.paciente_apellido}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600">
-                          {t.estado}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {formatFechaHora(t.fecha_hora)}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <button
+              type="button"
+              className="icon-button"
+              onClick={cargarTurnos}
+              disabled={cargandoTurnos}
+              aria-label="Actualizar agenda"
+            >
+              <Icon name="refresh" size={17} />
+            </button>
           </div>
 
-          {/* Columna Derecha: Atención y Notas de Seguimiento */}
-          <div className="space-y-6 md:col-span-2">
-            {turnoSeleccionado ? (
-              <>
-                {/* Cabecera del Turno Seleccionado */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                    <div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
-                        {turnoSeleccionado.especialidad_nombre}
-                      </span>
-                      <h2 className="text-xl font-bold text-slate-900 mt-0.5">
-                        {turnoSeleccionado.paciente_nombre} {turnoSeleccionado.paciente_apellido}
-                      </h2>
-                      <p className="text-xs text-slate-500">
-                        DNI: {turnoSeleccionado.paciente_dni} · Turno programado: {formatFechaHora(turnoSeleccionado.fecha_hora)}
-                      </p>
-                    </div>
+          <div className="agenda-summary">
+            <b>{turnos.length} turnos</b>
+            <span>{enEspera.length} en espera</span>
+          </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 rounded-full text-xs font-bold border bg-slate-100 text-slate-800">
-                        {turnoSeleccionado.estado}
-                      </span>
+          {cargandoTurnos ? (
+            <div className="space-y-3 py-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : turnos.length === 0 ? (
+            <p className="text-xs text-slate-500 py-4 text-center">
+              No hay turnos asignados para hoy.
+            </p>
+          ) : (
+            turnos.map((t) => {
+              const hora = formatPartesFecha(t.fecha_hora).horaTexto;
+              const esSeleccionado = turnoSeleccionado?.id_turno === t.id_turno;
 
-                      {turnoSeleccionado.estado === "EN_ESPERA" && (
-                        <Boton
-                          className="w-auto bg-emerald-600 hover:bg-emerald-700 text-xs py-2 px-4 shadow"
-                          onClick={handleAtender}
-                          cargando={atendiendo}
-                        >
-                          Marcar como Atendido
-                        </Boton>
-                      )}
-                    </div>
-                  </div>
+              return (
+                <button
+                  key={t.id_turno}
+                  type="button"
+                  className={esSeleccionado ? "selected" : ""}
+                  onClick={() => setTurnoSeleccionado(t)}
+                >
+                  <time>{hora}</time>
+                  <span>
+                    <b>{t.paciente_nombre} {t.paciente_apellido}</b>
+                    <small>{t.especialidad_nombre}</small>
+                  </span>
+                  {t.estado === "EN_ESPERA" && <i />}
+                </button>
+              );
+            })
+          )}
+        </aside>
 
-                  {turnoSeleccionado.estado === "RESERVADO" && (
-                    <div className="rounded-xl bg-blue-50 p-3 text-xs text-blue-800 border border-blue-200">
-                      El paciente aún no anunció su llegada en recepción. El turno pasará a EN_ESPERA al registrarse su llegada.
-                    </div>
-                  )}
-
-                  {turnoSeleccionado.estado === "ATENDIDO" && (
-                    <div className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800 border border-emerald-200 font-medium">
-                      ✓ Atención médica completada y registrada en auditoría.
-                    </div>
-                  )}
+        {/* Panel Derecho: Ficha Clínica y Notas */}
+        <section className="clinical-panel">
+          {turnoSeleccionado && partesTurnoSel ? (
+            <>
+              <div className="clinical-head">
+                <div className="patient-avatar">{inicialesPaciente}</div>
+                <div>
+                  <span className="eyebrow">
+                    {turnoSeleccionado.estado === "EN_ESPERA"
+                      ? "PACIENTE EN SALA DE ESPERA"
+                      : "TURNO PROGRAMADO"}
+                  </span>
+                  <h2>{turnoSeleccionado.paciente_nombre} {turnoSeleccionado.paciente_apellido}</h2>
+                  <p>DNI {turnoSeleccionado.paciente_dni}</p>
                 </div>
+                <Status tone={ESTADO_TONE[turnoSeleccionado.estado]}>
+                  {turnoSeleccionado.estado}
+                </Status>
+              </div>
 
-                {/* Notas de Seguimiento (RF-14) */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">
-                        Anotaciones Médicas de Seguimiento
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        Historial clínico confidencial del paciente. Solo accesible para profesionales médicos.
-                      </p>
-                    </div>
-                  </div>
+              <div className="clinical-info">
+                <div>
+                  <small>TURNO</small>
+                  <b>Hoy, {partesTurnoSel.horaTexto} hs</b>
+                </div>
+                <div>
+                  <small>ESPECIALIDAD</small>
+                  <b>{turnoSeleccionado.especialidad_nombre}</b>
+                </div>
+                <div>
+                  <small>DURACIÓN</small>
+                  <b>{turnoSeleccionado.duracion_minutos} minutos</b>
+                </div>
+              </div>
 
-                  {/* Formulario Nueva Nota */}
-                  <form onSubmit={handleCrearNota} className="space-y-3">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                      Agregar nueva anotación
-                    </label>
-                    <textarea
-                      rows={3}
-                      required
-                      value={nuevaNota}
-                      onChange={(e) => setNuevaNota(e.target.value)}
-                      placeholder="Registrá observaciones sobre la evolución, medicación o indicaciones para controles futuros..."
-                      className="block w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500"
-                    />
-                    <div className="flex justify-end">
-                      <Boton
-                        type="submit"
-                        className="w-auto text-xs py-2 px-4"
-                        cargando={guardandoNota}
-                      >
-                        Guardar Anotación
-                      </Boton>
-                    </div>
-                  </form>
+              {turnoSeleccionado.estado === "EN_ESPERA" && (
+                <div className="clinical-actions">
+                  <button
+                    type="button"
+                    className="primary"
+                    disabled={atendiendo}
+                    onClick={() => void handleAtender()}
+                  >
+                    <Icon name="check" size={17} />
+                    {atendiendo ? "Registrando..." : "Marcar como atendido"}
+                  </button>
+                </div>
+              )}
 
-                  {/* Lista de Notas Anteriores */}
-                  <div className="border-t border-slate-100 pt-4 space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Historial de Notas ({notas.length})
-                    </h4>
+              {/* Notas de Seguimiento */}
+              <div className="notes-head">
+                <div>
+                  <h3>Notas de seguimiento</h3>
+                  <p>Información confidencial de evolución clínica para este paciente.</p>
+                </div>
+              </div>
 
-                    {cargandoNotas ? (
-                      <Cargando texto="Cargando historial de notas..." />
-                    ) : notas.length === 0 ? (
-                      <p className="text-xs text-slate-500 italic py-2">
-                        El paciente aún no cuenta con anotaciones previas registradas.
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {notas.map((n) => (
-                          <div
-                            key={n.id_nota}
-                            className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-2 text-sm"
-                          >
-                            <div className="flex items-center justify-between text-xs text-slate-500">
-                              <span>
-                                Dr(a). {n.medico_nombre} {n.medico_apellido} · {formatFechaHora(n.fecha_creacion)}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setNotaEnEdicion(n);
-                                  setContenidoEdicion(n.contenido);
-                                }}
-                                className="font-medium text-brand-600 hover:underline"
-                              >
-                                Editar
-                              </button>
-                            </div>
-                            <p className="text-slate-800 text-sm whitespace-pre-wrap">
-                              {n.contenido}
+              <form onSubmit={handleCrearNota} className="space-y-3 mb-6">
+                <textarea
+                  rows={3}
+                  required
+                  value={nuevaNota}
+                  onChange={(e) => setNuevaNota(e.target.value)}
+                  placeholder="Registrá observaciones sobre la evolución clínica, indicaciones o controles futuros..."
+                  className="block w-full rounded-xl border border-slate-300 p-3 text-xs text-slate-900 shadow-sm"
+                />
+                <div className="flex justify-end">
+                  <button type="submit" className="primary" disabled={guardandoNota}>
+                    <Icon name="plus" size={16} />
+                    {guardandoNota ? "Guardando..." : "Guardar Nota"}
+                  </button>
+                </div>
+              </form>
+
+              {cargandoNotas ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : notas.length === 0 ? (
+                <p className="text-xs text-slate-500 italic py-2">
+                  El paciente aún no cuenta con notas previas registradas.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {notas.map((n) => {
+                    const nomMed = n.medico_nombre || "";
+                    const apeMed = n.medico_apellido || "";
+                    const inicialesMed = nomMed || apeMed
+                      ? `${nomMed.charAt(0)}${apeMed.charAt(0)}`.toUpperCase()
+                      : "DR";
+                    const partesNota = formatPartesFecha(n.fecha_creacion);
+
+                    return (
+                      <article key={n.id_nota} className="note">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <span>{inicialesMed}</span>
+                            <p>
+                              <b>Dr(a). {nomMed} {apeMed}</b>
+                              <small>
+                                {partesNota.diaMesTexto} · {partesNota.horaTexto} hs
+                              </small>
                             </p>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Modal Edición de Nota */}
-                {notaEnEdicion && (
-                  <div
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="modal-editar-nota"
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
-                  >
-                    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
-                      <h3 id="modal-editar-nota" className="text-lg font-bold text-slate-900">
-                        Modificar Anotación Médica
-                      </h3>
-                      <form onSubmit={handleGuardarEdicion} className="space-y-3">
-                        <textarea
-                          rows={4}
-                          required
-                          value={contenidoEdicion}
-                          onChange={(e) => setContenidoEdicion(e.target.value)}
-                          className="block w-full rounded-xl border border-slate-300 p-3 text-sm"
-                        />
-                        <div className="flex justify-end gap-2 pt-2">
-                          <Boton
+                          <button
                             type="button"
-                            variante="secundario"
-                            className="w-auto text-xs"
-                            onClick={() => setNotaEnEdicion(null)}
+                            className="secondary text-xs py-1 px-2"
+                            onClick={() => {
+                              setNotaEnEdicion(n);
+                              setContenidoEdicion(n.contenido);
+                            }}
                           >
-                            Cancelar
-                          </Boton>
-                          <Boton type="submit" className="w-auto text-xs">
-                            Actualizar Anotación
-                          </Boton>
+                            Editar
+                          </button>
                         </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-500">
-                Seleccioná un turno de la lista para visualizar los detalles del paciente y sus notas.
+                        <p>{n.contenido}</p>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="py-12 text-center text-slate-500 text-sm">
+              Seleccioná un turno de la agenda izquierda para ver el historial y registrar la atención.
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* Modal Edición de Nota */}
+      {notaEnEdicion && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900">Modificar Anotación Médica</h3>
+            <form onSubmit={handleGuardarEdicion} className="space-y-3">
+              <textarea
+                rows={4}
+                required
+                value={contenidoEdicion}
+                onChange={(e) => setContenidoEdicion(e.target.value)}
+                className="block w-full rounded-xl border border-slate-300 p-3 text-sm"
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setNotaEnEdicion(null)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="primary">
+                  Actualizar Anotación
+                </button>
               </div>
-            )}
+            </form>
           </div>
         </div>
-      </main>
-    </div>
+      )}
+    </>
   );
 }
