@@ -1,4 +1,5 @@
 import { clienteApi } from "@/api/client";
+import type { components } from "@/api/schema";
 import type {
   RestriccionEstadoOut,
   RestriccionOut,
@@ -6,67 +7,11 @@ import type {
   TurnosListResponse,
 } from "@/features/turnos/types";
 
-export interface PacienteItem {
-  id_paciente: string;
-  id_usuario: string;
-  dni: string;
-  email: string;
-  nombre: string;
-  apellido: string;
-  telefono: string | null;
-  fecha_nacimiento: string | null;
-  habilitado: boolean;
-  email_verificado: boolean;
-}
-
-export interface PacientesListResponse {
-  items: PacienteItem[];
-  page: number;
-  page_size: number;
-  total: number;
-  pages: number;
-}
-
-export interface TurnoEnEsperaResponse {
-  id_turno: string;
-  id_paciente: string;
-  id_medico: string;
-  fecha_hora: string;
-  fecha_hora_llegada: string;
-  duracion_minutos: number;
-  orden_atencion: number;
-  en_tolerancia: boolean;
-  medico_nombre: string;
-  medico_apellido: string;
-  especialidad_nombre: string;
-  paciente_nombre: string;
-  paciente_apellido: string;
-  paciente_dni: string;
-}
-
-export interface SolicitudCancelacionOut {
-  id_solicitud: string;
-  id_turno: string;
-  id_paciente: string;
-  motivo: string;
-  estado: "PENDIENTE" | "APROBADA" | "RECHAZADA";
-  fecha_creacion: string;
-  fecha_resolucion: string | null;
-  id_usuario_resolucion: string | null;
-  detalle_resolucion: string | null;
-  paciente_nombre?: string | null;
-  paciente_apellido?: string | null;
-  paciente_dni?: string | null;
-  turno_fecha_hora?: string | null;
-  medico_nombre?: string | null;
-  medico_apellido?: string | null;
-  especialidad_nombre?: string | null;
-}
-
-export interface CierreJornadaResponse {
-  total_ausentes: number;
-  turnos_afectados: string[];
-}
+export type PacienteItem = components["schemas"]["PacienteOut"];
+export type PacientesListResponse = components["schemas"]["Pagina_PacienteOut_"];
+export type TurnoEnEsperaResponse = components["schemas"]["TurnoEnEsperaResponse"];
+export type SolicitudCancelacionOut = components["schemas"]["SolicitudCancelacionOut"];
+export type CierreJornadaResponse = components["schemas"]["CierreJornadaResponse"];
 
 export const recepcionApi = {
   /** `q` busca por DNI, nombre, apellido o correo (parcial, sin distinguir mayúsculas). */

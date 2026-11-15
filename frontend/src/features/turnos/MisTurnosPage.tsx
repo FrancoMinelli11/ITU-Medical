@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { AppNavbar } from "@/components/layout/AppNavbar";
 import { Alerta } from "@/components/ui/Alerta";
 import { Boton } from "@/components/ui/Boton";
-import { Cargando } from "@/components/ui/Cargando";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { formatFechaHora } from "@/lib/dates";
 import { mensajeDeError } from "@/lib/problem";
 import { ModalCancelarTurno } from "./ModalCancelarTurno";
@@ -101,8 +101,10 @@ export function MisTurnosPage() {
         </div>
 
         {cargando ? (
-          <div className="py-12 flex justify-center">
-            <Cargando texto="Cargando tus turnos..." />
+          <div className="space-y-4">
+            <Skeleton className="h-32 w-full rounded-2xl" />
+            <Skeleton className="h-32 w-full rounded-2xl" />
+            <Skeleton className="h-32 w-full rounded-2xl" />
           </div>
         ) : listaActual.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">

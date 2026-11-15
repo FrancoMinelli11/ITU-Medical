@@ -1,18 +1,8 @@
 import { clienteApi } from "@/api/client";
+import type { components } from "@/api/schema";
 import type { TurnoResponse, TurnosListResponse } from "@/features/turnos/types";
 
-export interface NotaSeguimientoOut {
-  id_nota: string;
-  id_medico: string;
-  id_paciente: string;
-  id_turno: string | null;
-  contenido: string;
-  fecha_creacion: string;
-  fecha_modificacion: string;
-  medico_nombre?: string | null;
-  medico_apellido?: string | null;
-  especialidad_nombre?: string | null;
-}
+export type NotaSeguimientoOut = components["schemas"]["NotaSeguimientoOut"];
 
 export const medicoApi = {
   async obtenerTurnos(idMedico?: string, estado?: string): Promise<TurnosListResponse> {

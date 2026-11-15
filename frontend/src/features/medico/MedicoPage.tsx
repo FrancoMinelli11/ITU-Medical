@@ -369,9 +369,14 @@ export function MedicoPage() {
 
                 {/* Modal Edición de Nota */}
                 {notaEnEdicion && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="modal-editar-nota"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+                  >
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
-                      <h3 className="text-lg font-bold text-slate-900">
+                      <h3 id="modal-editar-nota" className="text-lg font-bold text-slate-900">
                         Modificar Anotación Médica
                       </h3>
                       <form onSubmit={handleGuardarEdicion} className="space-y-3">

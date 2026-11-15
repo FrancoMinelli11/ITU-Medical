@@ -5,6 +5,7 @@ import { AppNavbar } from "@/components/layout/AppNavbar";
 import { Alerta } from "@/components/ui/Alerta";
 import { Boton } from "@/components/ui/Boton";
 import { Cargando } from "@/components/ui/Cargando";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { formatFecha, formatHora } from "@/lib/dates";
 import { mensajeDeError } from "@/lib/problem";
 import { turnosApi } from "./api";
@@ -216,7 +217,7 @@ export function ReservarTurnoPage() {
                     2. Profesional
                   </label>
                   {cargandoMedicos ? (
-                    <p className="text-sm text-slate-500 mt-2">Cargando médicos...</p>
+                    <Skeleton className="mt-2 h-11 w-full rounded-xl" />
                   ) : medicos.length === 0 ? (
                     <p className="text-sm text-slate-500 mt-2">
                       No hay profesionales disponibles para esta especialidad.
@@ -271,7 +272,11 @@ export function ReservarTurnoPage() {
                     4. Horarios Disponibles
                   </label>
                   {cargandoSlots ? (
-                    <Cargando texto="Consultando disponibilidad..." />
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 py-1">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <Skeleton key={i} className="h-10 rounded-xl" />
+                      ))}
+                    </div>
                   ) : slots.length === 0 ? (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 text-center">
                       No hay horarios libres para esta fecha. Probá seleccionando otro día.

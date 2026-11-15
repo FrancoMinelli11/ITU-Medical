@@ -1,0 +1,5170 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sistema de Turnos Médicos",
+    "description": "API de gestión administrativa de turnos médicos.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "sistema"
+        ],
+        "summary": "Health check",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Api V1 Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ready": {
+      "get": {
+        "tags": [
+          "sistema"
+        ],
+        "summary": "Readiness check",
+        "operationId": "ready_api_v1_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Ready Api V1 Ready Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/csrf": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Emitir la cookie CSRF (bootstrap del SPA)",
+        "operationId": "obtener_csrf_api_v1_auth_csrf_get",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/registro": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Registro web de paciente",
+        "description": "RF-01: crea la cuenta sin verificar y encola el correo de verificación.\n\nEl paciente puede iniciar sesión de inmediato, pero no reservar turnos hasta\nconfirmar el enlace (RN-27).",
+        "operationId": "registro_api_v1_auth_registro_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistroRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PacienteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verificar-email": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Confirmar el correo desde el enlace del correo",
+        "operationId": "verificar_email_api_v1_auth_verificar_email_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificarEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificacionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reenviar-verificacion": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Reenviar el correo de verificación",
+        "description": "Respuesta genérica siempre: no confirma si el correo existe o ya está verificado.",
+        "operationId": "reenviar_verificacion_api_v1_auth_reenviar_verificacion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReenviarVerificacionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MensajeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/recuperar-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Solicitar la recuperación de contraseña",
+        "description": "RF-21: respuesta genérica siempre; si el par existe, se encola el correo.",
+        "operationId": "recuperar_password_api_v1_auth_recuperar_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecuperarPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MensajeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/restablecer-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Definir la nueva contraseña desde el enlace del correo",
+        "description": "Consume el token de un solo uso y revoca todas las sesiones abiertas (C2).",
+        "operationId": "restablecer_password_api_v1_auth_restablecer_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestablecerPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MensajeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Iniciar sesión",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Renovar el token de acceso",
+        "operationId": "refresh_api_v1_auth_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Cerrar sesión",
+        "description": "Idempotente: revoca la familia del refresh y limpia las cookies.\n\nNo exige un access token válido a propósito: si el usuario deja la pestaña\nabierta más de 15 minutos, el token de acceso vence y un logout con 401\ndejaría el refresh vivo (la sesión \"reviviría\" en la próxima recarga).",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Perfil del usuario autenticado",
+        "description": "C3: responde 200 aunque `debe_cambiar_password` sea `true`.\n\nEs lo primero que consulta el SPA al montar; si devolviera 403 no podría\ndistinguir \"sesión inválida\" de \"tenés que cambiar la contraseña\".",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/cambiar-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Cambiar la contraseña",
+        "operationId": "cambiar_password_api_v1_auth_cambiar_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambiarPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/primer-ingreso": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Cambiar la contraseña en el primer ingreso",
+        "description": "CU-13: la contraseña temporal es el DNI, que ya se usó para entrar.",
+        "operationId": "primer_ingreso_api_v1_auth_primer_ingreso_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrimerIngresoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/pacientes": {
+      "get": {
+        "tags": [
+          "pacientes"
+        ],
+        "summary": "Buscar pacientes",
+        "operationId": "listar_api_v1_pacientes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "DNI, nombre, apellido o correo",
+              "title": "Q"
+            },
+            "description": "DNI, nombre, apellido o correo"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_PacienteOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pacientes"
+        ],
+        "summary": "Crear paciente desde recepción",
+        "description": "La contraseña inicial es el DNI y el correo queda verificado (RF-02).",
+        "operationId": "crear_api_v1_pacientes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PacienteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PacienteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pacientes/{id_paciente}": {
+      "get": {
+        "tags": [
+          "pacientes"
+        ],
+        "summary": "Ver un paciente",
+        "operationId": "obtener_api_v1_pacientes__id_paciente__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_paciente",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Paciente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PacienteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "pacientes"
+        ],
+        "summary": "Editar un paciente",
+        "operationId": "actualizar_api_v1_pacientes__id_paciente__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_paciente",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Paciente"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PacienteUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PacienteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/especialidades": {
+      "get": {
+        "tags": [
+          "especialidades"
+        ],
+        "summary": "Listar especialidades",
+        "operationId": "listar_api_v1_especialidades_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "solo_activas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Filtrar solo especialidades activas",
+              "default": true,
+              "title": "Solo Activas"
+            },
+            "description": "Filtrar solo especialidades activas"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EspecialidadOut"
+                  },
+                  "title": "Response Listar Api V1 Especialidades Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "especialidades"
+        ],
+        "summary": "Crear especialidad (Administrador)",
+        "operationId": "crear_api_v1_especialidades_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EspecialidadCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EspecialidadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/especialidades/{id_especialidad}": {
+      "get": {
+        "tags": [
+          "especialidades"
+        ],
+        "summary": "Obtener especialidad",
+        "operationId": "obtener_api_v1_especialidades__id_especialidad__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_especialidad",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Especialidad"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EspecialidadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "especialidades"
+        ],
+        "summary": "Modificar especialidad (Administrador)",
+        "operationId": "actualizar_api_v1_especialidades__id_especialidad__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_especialidad",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Especialidad"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EspecialidadUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EspecialidadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/medicos": {
+      "get": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Listar médicos",
+        "operationId": "listar_medicos_api_v1_medicos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "DNI, nombre, apellido o matrícula",
+              "title": "Q"
+            },
+            "description": "DNI, nombre, apellido o matrícula"
+          },
+          {
+            "name": "id_especialidad",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por especialidad",
+              "title": "Id Especialidad"
+            },
+            "description": "Filtrar por especialidad"
+          },
+          {
+            "name": "solo_activos",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Filtrar solo profesionales activos",
+              "default": true,
+              "title": "Solo Activos"
+            },
+            "description": "Filtrar solo profesionales activos"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_MedicoOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Crear médico (Administrador)",
+        "operationId": "crear_medico_api_v1_medicos_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedicoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/medicos/{id_medico}": {
+      "get": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Obtener detalle de médico",
+        "operationId": "obtener_medico_api_v1_medicos__id_medico__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Modificar médico (Administrador)",
+        "operationId": "actualizar_medico_api_v1_medicos__id_medico__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MedicoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/medicos/{id_medico}/horarios": {
+      "get": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Consultar horarios de atención habitual",
+        "operationId": "obtener_horarios_api_v1_medicos__id_medico__horarios_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorarioOut"
+                  },
+                  "title": "Response Obtener Horarios Api V1 Medicos  Id Medico  Horarios Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Configurar horarios habituales (Administrador)",
+        "operationId": "configurar_horarios_api_v1_medicos__id_medico__horarios_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HorariosSetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorarioOut"
+                  },
+                  "title": "Response Configurar Horarios Api V1 Medicos  Id Medico  Horarios Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/medicos/{id_medico}/disponibilidad": {
+      "get": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Consultar slots disponibles para reservar",
+        "operationId": "consultar_disponibilidad_api_v1_medicos__id_medico__disponibilidad_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          },
+          {
+            "name": "fecha_desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Fecha inicio (YYYY-MM-DD)",
+              "title": "Fecha Desde"
+            },
+            "description": "Fecha inicio (YYYY-MM-DD)"
+          },
+          {
+            "name": "fecha_hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Fecha fin (YYYY-MM-DD)",
+              "title": "Fecha Hasta"
+            },
+            "description": "Fecha fin (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisponibilidadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/medicos/{id_medico}/bloqueos": {
+      "get": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Listar bloqueos de agenda",
+        "operationId": "listar_bloqueos_api_v1_medicos__id_medico__bloqueos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BloqueoOut"
+                  },
+                  "title": "Response Listar Bloqueos Api V1 Medicos  Id Medico  Bloqueos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Registrar bloqueo de agenda (Administración o Recepción)",
+        "operationId": "crear_bloqueo_api_v1_medicos__id_medico__bloqueos_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloqueoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloqueoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/medicos/{id_medico}/bloqueos/{id_bloqueo}": {
+      "delete": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Cancelar bloqueo de agenda (Administración o Recepción)",
+        "operationId": "eliminar_bloqueo_api_v1_medicos__id_medico__bloqueos__id_bloqueo__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          },
+          {
+            "name": "id_bloqueo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Bloqueo"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/medicos/{id_medico}/agenda": {
+      "get": {
+        "tags": [
+          "medicos"
+        ],
+        "summary": "Ver agenda completa de turnos y bloqueos",
+        "operationId": "ver_agenda_api_v1_medicos__id_medico__agenda_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Medico"
+            }
+          },
+          {
+            "name": "fecha_desde",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Fecha inicio (YYYY-MM-DD)",
+              "title": "Fecha Desde"
+            },
+            "description": "Fecha inicio (YYYY-MM-DD)"
+          },
+          {
+            "name": "fecha_hasta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Fecha fin (YYYY-MM-DD)",
+              "title": "Fecha Hasta"
+            },
+            "description": "Fecha fin (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendaOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/turnos": {
+      "post": {
+        "tags": [
+          "turnos"
+        ],
+        "summary": "Reserva de turno realizada por el paciente (web)",
+        "operationId": "reservar_turno_web_api_v1_turnos_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservaTurnoWebRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "turnos"
+        ],
+        "summary": "Listar turnos con control de permisos por rol",
+        "operationId": "listar_turnos_api_v1_turnos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fecha_desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fecha inicio",
+              "title": "Fecha Desde"
+            },
+            "description": "Fecha inicio"
+          },
+          {
+            "name": "fecha_hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fecha fin",
+              "title": "Fecha Hasta"
+            },
+            "description": "Fecha fin"
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoTurno"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por estado",
+              "title": "Estado"
+            },
+            "description": "Filtrar por estado"
+          },
+          {
+            "name": "id_medico",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por médico",
+              "title": "Id Medico"
+            },
+            "description": "Filtrar por médico"
+          },
+          {
+            "name": "id_paciente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por paciente",
+              "title": "Id Paciente"
+            },
+            "description": "Filtrar por paciente"
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Pagina"
+            }
+          },
+          {
+            "name": "tamano_pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Tamano Pagina"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnosListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/turnos/recepcion": {
+      "post": {
+        "tags": [
+          "turnos"
+        ],
+        "summary": "Reserva de turno realizada por recepción",
+        "operationId": "reservar_turno_recepcion_api_v1_turnos_recepcion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservaTurnoRecepcionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/turnos/{id_turno}": {
+      "get": {
+        "tags": [
+          "turnos"
+        ],
+        "summary": "Obtener detalle de un turno específico",
+        "operationId": "obtener_turno_api_v1_turnos__id_turno__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_turno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Turno"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/turnos/{id_turno}/cancelar": {
+      "post": {
+        "tags": [
+          "turnos"
+        ],
+        "summary": "Cancelación habitual de turno por parte del paciente (>= 24 hs)",
+        "operationId": "cancelar_turno_paciente_api_v1_turnos__id_turno__cancelar_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_turno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Turno"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CancelacionPacienteRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Datos"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/turnos/{id_turno}/cancelar-recepcion": {
+      "post": {
+        "tags": [
+          "turnos"
+        ],
+        "summary": "Cancelación administrativa de turno por recepción",
+        "operationId": "cancelar_turno_recepcion_api_v1_turnos__id_turno__cancelar_recepcion_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_turno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Turno"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelacionRecepcionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/turnos/{id_turno}/solicitar-cancelacion": {
+      "post": {
+        "tags": [
+          "turnos"
+        ],
+        "summary": "Solicitar cancelación rápida de turno (< 24 hs)",
+        "operationId": "solicitar_cancelacion_rapida_api_v1_turnos__id_turno__solicitar_cancelacion_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_turno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Turno"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudCancelacionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitudCancelacionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/turnos/{id_turno}/atender": {
+      "post": {
+        "tags": [
+          "turnos"
+        ],
+        "summary": "Registrar la atención de un turno (médico asignado)",
+        "operationId": "registrar_atencion_api_v1_turnos__id_turno__atender_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_turno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Turno"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/solicitudes-cancelacion": {
+      "get": {
+        "tags": [
+          "solicitudes-cancelacion"
+        ],
+        "summary": "Listar solicitudes de cancelación rápida",
+        "operationId": "listar_solicitudes_api_v1_solicitudes_cancelacion_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoSolicitudCancelacion"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por estado de la solicitud",
+              "title": "Estado"
+            },
+            "description": "Filtrar por estado de la solicitud"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SolicitudCancelacionOut"
+                  },
+                  "title": "Response Listar Solicitudes Api V1 Solicitudes Cancelacion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/solicitudes-cancelacion/{id_solicitud}/resolver": {
+      "post": {
+        "tags": [
+          "solicitudes-cancelacion"
+        ],
+        "summary": "Aprobar o rechazar solicitud de cancelación rápida (recepción/admin)",
+        "operationId": "resolver_solicitud_api_v1_solicitudes_cancelacion__id_solicitud__resolver_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_solicitud",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Solicitud"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolucionSolicitudRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolicitudCancelacionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recepcion/turnos/{id_turno}/llegada": {
+      "post": {
+        "tags": [
+          "recepcion"
+        ],
+        "summary": "Registrar la llegada del paciente para un turno",
+        "operationId": "registrar_llegada_api_v1_recepcion_turnos__id_turno__llegada_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_turno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Turno"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recepcion/sala-espera": {
+      "get": {
+        "tags": [
+          "recepcion"
+        ],
+        "summary": "Consultar sala de espera ordenada por prioridad de atención (RF-12)",
+        "operationId": "obtener_sala_espera_api_v1_recepcion_sala_espera_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_medico",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtrar por médico",
+              "title": "Id Medico"
+            },
+            "description": "Filtrar por médico"
+          },
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fecha de consulta (por defecto hoy)",
+              "title": "Fecha"
+            },
+            "description": "Fecha de consulta (por defecto hoy)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TurnoEnEsperaResponse"
+                  },
+                  "title": "Response Obtener Sala Espera Api V1 Recepcion Sala Espera Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recepcion/turnos/{id_turno}/ausente": {
+      "post": {
+        "tags": [
+          "recepcion"
+        ],
+        "summary": "Registrar individualmente la inasistencia de un paciente",
+        "operationId": "registrar_ausencia_individual_api_v1_recepcion_turnos__id_turno__ausente_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_turno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Turno"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/recepcion/cierre-jornada": {
+      "post": {
+        "tags": [
+          "recepcion"
+        ],
+        "summary": "Cierre de jornada: marcar ausencias de turnos no asistidos",
+        "operationId": "cerrar_jornada_api_v1_recepcion_cierre_jornada_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fecha a cerrar (por defecto hoy)",
+              "title": "Fecha"
+            },
+            "description": "Fecha a cerrar (por defecto hoy)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CierreJornadaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notas": {
+      "post": {
+        "tags": [
+          "notas"
+        ],
+        "summary": "Registrar una nueva anotación médica de seguimiento (RF-14, P-22)",
+        "operationId": "crear_nota_api_v1_notas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotaSeguimientoCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotaSeguimientoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notas/{id_nota}": {
+      "put": {
+        "tags": [
+          "notas"
+        ],
+        "summary": "Modificar una anotación médica existente (médico creador)",
+        "operationId": "modificar_nota_api_v1_notas__id_nota__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_nota",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Nota"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotaSeguimientoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotaSeguimientoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notas/paciente/{id_paciente}": {
+      "get": {
+        "tags": [
+          "notas"
+        ],
+        "summary": "Listar las anotaciones médicas de un paciente (solo personal médico, P-23)",
+        "operationId": "listar_notas_paciente_api_v1_notas_paciente__id_paciente__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_paciente",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Paciente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotaSeguimientoOut"
+                  },
+                  "title": "Response Listar Notas Paciente Api V1 Notas Paciente  Id Paciente  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restricciones": {
+      "post": {
+        "tags": [
+          "restricciones"
+        ],
+        "summary": "Clasificar paciente como Usuario rojo (RF-16, P-24)",
+        "operationId": "clasificar_usuario_rojo_api_v1_restricciones_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestriccionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestriccionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "restricciones"
+        ],
+        "summary": "Listar restricciones de usuarios",
+        "operationId": "listar_restricciones_api_v1_restricciones_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "solo_activas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Solo Activas"
+            }
+          },
+          {
+            "name": "id_paciente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Id Paciente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RestriccionOut"
+                  },
+                  "title": "Response Listar Restricciones Api V1 Restricciones Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restricciones/{id_restriccion}/levantar": {
+      "post": {
+        "tags": [
+          "restricciones"
+        ],
+        "summary": "Levantar restricción de Usuario rojo",
+        "operationId": "levantar_restriccion_api_v1_restricciones__id_restriccion__levantar_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_restriccion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Restriccion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestriccionOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restricciones/paciente/{id_paciente}": {
+      "get": {
+        "tags": [
+          "restricciones"
+        ],
+        "summary": "Consultar estado de Usuario rojo de un paciente",
+        "operationId": "obtener_estado_paciente_api_v1_restricciones_paciente__id_paciente__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_paciente",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id Paciente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestriccionEstadoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgendaOut": {
+        "properties": {
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "turnos": {
+            "items": {
+              "$ref": "#/components/schemas/AgendaTurnoOut"
+            },
+            "type": "array",
+            "title": "Turnos"
+          },
+          "bloqueos": {
+            "items": {
+              "$ref": "#/components/schemas/BloqueoOut"
+            },
+            "type": "array",
+            "title": "Bloqueos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_medico",
+          "turnos",
+          "bloqueos"
+        ],
+        "title": "AgendaOut"
+      },
+      "AgendaTurnoOut": {
+        "properties": {
+          "id_turno": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Turno"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora"
+          },
+          "duracion_minutos": {
+            "type": "integer",
+            "title": "Duracion Minutos"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoTurno"
+          },
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "paciente_nombre": {
+            "type": "string",
+            "title": "Paciente Nombre"
+          },
+          "paciente_apellido": {
+            "type": "string",
+            "title": "Paciente Apellido"
+          },
+          "paciente_dni": {
+            "type": "string",
+            "title": "Paciente Dni"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_turno",
+          "fecha_hora",
+          "duracion_minutos",
+          "estado",
+          "id_paciente",
+          "paciente_nombre",
+          "paciente_apellido",
+          "paciente_dni"
+        ],
+        "title": "AgendaTurnoOut"
+      },
+      "BloqueoCreate": {
+        "properties": {
+          "inicio": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Inicio"
+          },
+          "fin": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fin"
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Motivo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "inicio",
+          "fin",
+          "motivo"
+        ],
+        "title": "BloqueoCreate"
+      },
+      "BloqueoOut": {
+        "properties": {
+          "id_bloqueo": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Bloqueo"
+          },
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "inicio": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Inicio"
+          },
+          "fin": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fin"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "id_usuario_creador": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Usuario Creador"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Creacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_bloqueo",
+          "id_medico",
+          "inicio",
+          "fin",
+          "motivo",
+          "id_usuario_creador",
+          "fecha_creacion"
+        ],
+        "title": "BloqueoOut"
+      },
+      "CambiarPasswordRequest": {
+        "properties": {
+          "password_actual": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password Actual"
+          },
+          "password_nueva": {
+            "type": "string",
+            "title": "Password Nueva"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "password_actual",
+          "password_nueva"
+        ],
+        "title": "CambiarPasswordRequest"
+      },
+      "CancelacionPacienteRequest": {
+        "properties": {
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CancelacionPacienteRequest"
+      },
+      "CancelacionRecepcionRequest": {
+        "properties": {
+          "motivo": {
+            "$ref": "#/components/schemas/MotivoCancelacion"
+          },
+          "detalle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "CancelacionRecepcionRequest"
+      },
+      "CierreJornadaResponse": {
+        "properties": {
+          "total_ausentes": {
+            "type": "integer",
+            "title": "Total Ausentes"
+          },
+          "turnos_afectados": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Turnos Afectados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_ausentes",
+          "turnos_afectados"
+        ],
+        "title": "CierreJornadaResponse"
+      },
+      "DisponibilidadOut": {
+        "properties": {
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "fecha_desde": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Desde"
+          },
+          "fecha_hasta": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Hasta"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/SlotDisponibilidad"
+            },
+            "type": "array",
+            "title": "Slots"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_medico",
+          "fecha_desde",
+          "fecha_hasta",
+          "slots"
+        ],
+        "title": "DisponibilidadOut"
+      },
+      "EspecialidadCreate": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "EspecialidadCreate"
+      },
+      "EspecialidadOut": {
+        "properties": {
+          "id_especialidad": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Especialidad"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Creacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_especialidad",
+          "nombre",
+          "descripcion",
+          "activa",
+          "fecha_creacion"
+        ],
+        "title": "EspecialidadOut"
+      },
+      "EspecialidadUpdate": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "activa": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activa"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EspecialidadUpdate"
+      },
+      "EstadoSolicitudCancelacion": {
+        "type": "string",
+        "enum": [
+          "PENDIENTE",
+          "APROBADA",
+          "RECHAZADA"
+        ],
+        "title": "EstadoSolicitudCancelacion"
+      },
+      "EstadoTurno": {
+        "type": "string",
+        "enum": [
+          "RESERVADO",
+          "EN_ESPERA",
+          "ATENDIDO",
+          "CANCELADO",
+          "AUSENTE"
+        ],
+        "title": "EstadoTurno"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HorarioItem": {
+        "properties": {
+          "dia_semana": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Dia Semana",
+            "description": "0=Lunes, 6=Domingo"
+          },
+          "hora_inicio": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Inicio"
+          },
+          "hora_fin": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Fin"
+          },
+          "duracion_minutos": {
+            "type": "integer",
+            "maximum": 240.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Duracion Minutos",
+            "default": 30
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dia_semana",
+          "hora_inicio",
+          "hora_fin"
+        ],
+        "title": "HorarioItem"
+      },
+      "HorarioOut": {
+        "properties": {
+          "id_horario": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Horario"
+          },
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "dia_semana": {
+            "type": "integer",
+            "title": "Dia Semana"
+          },
+          "hora_inicio": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Inicio"
+          },
+          "hora_fin": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Fin"
+          },
+          "duracion_minutos": {
+            "type": "integer",
+            "title": "Duracion Minutos"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_horario",
+          "id_medico",
+          "dia_semana",
+          "hora_inicio",
+          "hora_fin",
+          "duracion_minutos",
+          "activo"
+        ],
+        "title": "HorarioOut"
+      },
+      "HorariosSetRequest": {
+        "properties": {
+          "horarios": {
+            "items": {
+              "$ref": "#/components/schemas/HorarioItem"
+            },
+            "type": "array",
+            "title": "Horarios"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "horarios"
+        ],
+        "title": "HorariosSetRequest"
+      },
+      "LoginRequest": {
+        "properties": {
+          "dni": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 7,
+            "pattern": "^\\d{7,8}$",
+            "title": "Dni"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dni",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "description": "El DNI va como texto siempre (RN-30): nunca `int`, perdería ceros."
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/UsuarioOut"
+          },
+          "debe_cambiar_password": {
+            "type": "boolean",
+            "title": "Debe Cambiar Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in",
+          "usuario",
+          "debe_cambiar_password"
+        ],
+        "title": "LoginResponse"
+      },
+      "MedicoCreate": {
+        "properties": {
+          "dni": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 7,
+            "pattern": "^\\d{7,8}$",
+            "title": "Dni"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "apellido": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Apellido"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "id_especialidad": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Especialidad"
+          },
+          "matricula": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matricula"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dni",
+          "email",
+          "nombre",
+          "apellido",
+          "id_especialidad"
+        ],
+        "title": "MedicoCreate"
+      },
+      "MedicoOut": {
+        "properties": {
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "id_usuario": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Usuario"
+          },
+          "dni": {
+            "type": "string",
+            "title": "Dni"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "apellido": {
+            "type": "string",
+            "title": "Apellido"
+          },
+          "id_especialidad": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Especialidad"
+          },
+          "especialidad_nombre": {
+            "type": "string",
+            "title": "Especialidad Nombre"
+          },
+          "matricula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matricula"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Creacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_medico",
+          "id_usuario",
+          "dni",
+          "email",
+          "nombre",
+          "apellido",
+          "id_especialidad",
+          "especialidad_nombre",
+          "matricula",
+          "activo",
+          "fecha_creacion"
+        ],
+        "title": "MedicoOut"
+      },
+      "MedicoUpdate": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "apellido": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apellido"
+          },
+          "id_especialidad": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Especialidad"
+          },
+          "matricula": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matricula"
+          },
+          "activo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "MedicoUpdate"
+      },
+      "MensajeResponse": {
+        "properties": {
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mensaje"
+        ],
+        "title": "MensajeResponse"
+      },
+      "MotivoCancelacion": {
+        "type": "string",
+        "enum": [
+          "HABITUAL",
+          "RAPIDA",
+          "BLOQUEO_AGENDA",
+          "CAMBIO_HORARIO",
+          "DESHABILITACION_MEDICO",
+          "DESHABILITACION_PACIENTE",
+          "RETIRO_VOLUNTARIO",
+          "OTRO"
+        ],
+        "title": "MotivoCancelacion"
+      },
+      "NotaSeguimientoCreate": {
+        "properties": {
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "id_turno": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Turno"
+          },
+          "contenido": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Contenido",
+            "description": "Anotación breve sobre avances, mejoras o seguimiento del paciente."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id_paciente",
+          "contenido"
+        ],
+        "title": "NotaSeguimientoCreate"
+      },
+      "NotaSeguimientoOut": {
+        "properties": {
+          "id_nota": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Nota"
+          },
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "id_turno": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Turno"
+          },
+          "contenido": {
+            "type": "string",
+            "title": "Contenido"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Creacion"
+          },
+          "fecha_modificacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Modificacion"
+          },
+          "medico_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medico Nombre"
+          },
+          "medico_apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medico Apellido"
+          },
+          "especialidad_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Especialidad Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_nota",
+          "id_medico",
+          "id_paciente",
+          "contenido",
+          "fecha_creacion",
+          "fecha_modificacion"
+        ],
+        "title": "NotaSeguimientoOut"
+      },
+      "NotaSeguimientoUpdate": {
+        "properties": {
+          "contenido": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Contenido",
+            "description": "Contenido modificado de la anotación médica."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contenido"
+        ],
+        "title": "NotaSeguimientoUpdate"
+      },
+      "PacienteCreate": {
+        "properties": {
+          "dni": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 7,
+            "pattern": "^\\d{7,8}$",
+            "title": "Dni"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "apellido": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Apellido"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "fecha_nacimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Nacimiento"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dni",
+          "email",
+          "nombre",
+          "apellido"
+        ],
+        "title": "PacienteCreate",
+        "description": "Alta desde recepción (RF-02).\n\nNo lleva contraseña: la inicial es el DNI literal y se exige cambiarla en el\nprimer ingreso (RN-29). El correo se considera verificado al crearse."
+      },
+      "PacienteOut": {
+        "properties": {
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "id_usuario": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Usuario"
+          },
+          "dni": {
+            "type": "string",
+            "title": "Dni"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "apellido": {
+            "type": "string",
+            "title": "Apellido"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "fecha_nacimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Nacimiento"
+          },
+          "email_verificado": {
+            "type": "boolean",
+            "title": "Email Verificado"
+          },
+          "habilitado": {
+            "type": "boolean",
+            "title": "Habilitado"
+          },
+          "debe_cambiar_password": {
+            "type": "boolean",
+            "title": "Debe Cambiar Password"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Creacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_paciente",
+          "id_usuario",
+          "dni",
+          "email",
+          "nombre",
+          "apellido",
+          "email_verificado",
+          "habilitado",
+          "debe_cambiar_password",
+          "fecha_creacion"
+        ],
+        "title": "PacienteOut"
+      },
+      "PacienteUpdate": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "apellido": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apellido"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "fecha_nacimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Nacimiento"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PacienteUpdate"
+      },
+      "Pagina_MedicoOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MedicoOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "pages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total",
+          "pages"
+        ],
+        "title": "Pagina[MedicoOut]"
+      },
+      "Pagina_PacienteOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PacienteOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Size"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "pages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total",
+          "pages"
+        ],
+        "title": "Pagina[PacienteOut]"
+      },
+      "PrimerIngresoRequest": {
+        "properties": {
+          "password_nueva": {
+            "type": "string",
+            "title": "Password Nueva"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "password_nueva"
+        ],
+        "title": "PrimerIngresoRequest",
+        "description": "CU-13: la sesión ya está autenticada con la contraseña temporal."
+      },
+      "RecuperarPasswordRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "dni": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 7,
+            "pattern": "^\\d{7,8}$",
+            "title": "Dni"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "dni"
+        ],
+        "title": "RecuperarPasswordRequest",
+        "description": "RF-21: el par correo + DNI se pide junto (respuesta genérica siempre)."
+      },
+      "ReenviarVerificacionRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ReenviarVerificacionRequest"
+      },
+      "RefreshResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/UsuarioOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in",
+          "usuario"
+        ],
+        "title": "RefreshResponse"
+      },
+      "RegistroRequest": {
+        "properties": {
+          "dni": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 7,
+            "pattern": "^\\d{7,8}$",
+            "title": "Dni"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "apellido": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Apellido"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "fecha_nacimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Nacimiento"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dni",
+          "email",
+          "password",
+          "nombre",
+          "apellido"
+        ],
+        "title": "RegistroRequest",
+        "description": "RF-01: alta web de paciente. El correo es obligatorio y único."
+      },
+      "ReservaTurnoRecepcionRequest": {
+        "properties": {
+          "id_paciente": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Paciente"
+          },
+          "dni_paciente": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8,
+                "minLength": 7
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dni Paciente"
+          },
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora",
+            "description": "Fecha y hora de inicio del turno en formato ISO-8601."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id_medico",
+          "fecha_hora"
+        ],
+        "title": "ReservaTurnoRecepcionRequest"
+      },
+      "ReservaTurnoWebRequest": {
+        "properties": {
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora",
+            "description": "Fecha y hora de inicio del turno en formato ISO-8601 (con o sin timezone)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id_medico",
+          "fecha_hora"
+        ],
+        "title": "ReservaTurnoWebRequest"
+      },
+      "ResolucionSolicitudRequest": {
+        "properties": {
+          "aprobada": {
+            "type": "boolean",
+            "title": "Aprobada"
+          },
+          "detalle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "aprobada"
+        ],
+        "title": "ResolucionSolicitudRequest"
+      },
+      "RestablecerPasswordRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 16,
+            "title": "Token"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "RestablecerPasswordRequest"
+      },
+      "RestriccionCreate": {
+        "properties": {
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Motivo",
+            "description": "Motivo de la restricción (por ej. ausencias reiteradas sin aviso)."
+          },
+          "dias_vigencia": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Dias Vigencia",
+            "description": "Cantidad de días de vigencia de la restricción (30 por defecto, RN-20).",
+            "default": 30
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id_paciente",
+          "motivo"
+        ],
+        "title": "RestriccionCreate"
+      },
+      "RestriccionEstadoOut": {
+        "properties": {
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "id_usuario": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Usuario"
+          },
+          "es_usuario_rojo": {
+            "type": "boolean",
+            "title": "Es Usuario Rojo"
+          },
+          "restriccion_activa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RestriccionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_paciente",
+          "id_usuario",
+          "es_usuario_rojo"
+        ],
+        "title": "RestriccionEstadoOut"
+      },
+      "RestriccionOut": {
+        "properties": {
+          "id_restriccion": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Restriccion"
+          },
+          "id_usuario": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Usuario"
+          },
+          "id_paciente": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Paciente"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Fin"
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa"
+          },
+          "vigente": {
+            "type": "boolean",
+            "title": "Vigente"
+          },
+          "id_usuario_creador": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Usuario Creador"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Creacion"
+          },
+          "paciente_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Nombre"
+          },
+          "paciente_apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Apellido"
+          },
+          "paciente_dni": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Dni"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_restriccion",
+          "id_usuario",
+          "motivo",
+          "fecha_inicio",
+          "fecha_fin",
+          "activa",
+          "vigente",
+          "id_usuario_creador",
+          "fecha_creacion"
+        ],
+        "title": "RestriccionOut"
+      },
+      "RolUsuario": {
+        "type": "string",
+        "enum": [
+          "PACIENTE",
+          "RECEPCIONISTA",
+          "MEDICO",
+          "ADMINISTRADOR"
+        ],
+        "title": "RolUsuario"
+      },
+      "SlotDisponibilidad": {
+        "properties": {
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora"
+          },
+          "duracion_minutos": {
+            "type": "integer",
+            "title": "Duracion Minutos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha_hora",
+          "duracion_minutos"
+        ],
+        "title": "SlotDisponibilidad"
+      },
+      "SolicitudCancelacionCreate": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Motivo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "SolicitudCancelacionCreate"
+      },
+      "SolicitudCancelacionOut": {
+        "properties": {
+          "id_solicitud": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Solicitud"
+          },
+          "id_turno": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Turno"
+          },
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoSolicitudCancelacion"
+          },
+          "id_usuario_resolucion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id Usuario Resolucion"
+          },
+          "fecha_resolucion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Resolucion"
+          },
+          "detalle_resolucion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle Resolucion"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Creacion"
+          },
+          "paciente_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Nombre"
+          },
+          "paciente_apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Apellido"
+          },
+          "paciente_dni": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Dni"
+          },
+          "turno_fecha_hora": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turno Fecha Hora"
+          },
+          "medico_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medico Nombre"
+          },
+          "medico_apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medico Apellido"
+          },
+          "especialidad_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Especialidad Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_solicitud",
+          "id_turno",
+          "id_paciente",
+          "motivo",
+          "estado",
+          "fecha_creacion"
+        ],
+        "title": "SolicitudCancelacionOut"
+      },
+      "TurnoEnEsperaResponse": {
+        "properties": {
+          "id_turno": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Turno"
+          },
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "paciente_nombre": {
+            "type": "string",
+            "title": "Paciente Nombre"
+          },
+          "paciente_apellido": {
+            "type": "string",
+            "title": "Paciente Apellido"
+          },
+          "paciente_dni": {
+            "type": "string",
+            "title": "Paciente Dni"
+          },
+          "medico_nombre": {
+            "type": "string",
+            "title": "Medico Nombre"
+          },
+          "medico_apellido": {
+            "type": "string",
+            "title": "Medico Apellido"
+          },
+          "especialidad_nombre": {
+            "type": "string",
+            "title": "Especialidad Nombre"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora"
+          },
+          "fecha_hora_llegada": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora Llegada"
+          },
+          "duracion_minutos": {
+            "type": "integer",
+            "title": "Duracion Minutos"
+          },
+          "en_tolerancia": {
+            "type": "boolean",
+            "title": "En Tolerancia"
+          },
+          "orden_atencion": {
+            "type": "integer",
+            "title": "Orden Atencion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_turno",
+          "id_paciente",
+          "id_medico",
+          "paciente_nombre",
+          "paciente_apellido",
+          "paciente_dni",
+          "medico_nombre",
+          "medico_apellido",
+          "especialidad_nombre",
+          "fecha_hora",
+          "fecha_hora_llegada",
+          "duracion_minutos",
+          "en_tolerancia",
+          "orden_atencion"
+        ],
+        "title": "TurnoEnEsperaResponse"
+      },
+      "TurnoResponse": {
+        "properties": {
+          "id_turno": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Turno"
+          },
+          "id_paciente": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Paciente"
+          },
+          "id_medico": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Medico"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Hora"
+          },
+          "duracion_minutos": {
+            "type": "integer",
+            "title": "Duracion Minutos"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoTurno"
+          },
+          "fecha_hora_llegada": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Hora Llegada"
+          },
+          "fecha_hora_cancelacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Hora Cancelacion"
+          },
+          "motivo_cancelacion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MotivoCancelacion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "detalle_cancelacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle Cancelacion"
+          },
+          "medico_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medico Nombre"
+          },
+          "medico_apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medico Apellido"
+          },
+          "especialidad_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Especialidad Nombre"
+          },
+          "paciente_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Nombre"
+          },
+          "paciente_apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Apellido"
+          },
+          "paciente_dni": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paciente Dni"
+          },
+          "fecha_creacion": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Creacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_turno",
+          "id_paciente",
+          "id_medico",
+          "fecha_hora",
+          "duracion_minutos",
+          "estado",
+          "fecha_creacion"
+        ],
+        "title": "TurnoResponse"
+      },
+      "TurnosListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TurnoResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamano_pagina": {
+            "type": "integer",
+            "title": "Tamano Pagina"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "pagina",
+          "tamano_pagina"
+        ],
+        "title": "TurnosListResponse"
+      },
+      "UsuarioOut": {
+        "properties": {
+          "id_usuario": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id Usuario"
+          },
+          "dni": {
+            "type": "string",
+            "title": "Dni"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "apellido": {
+            "type": "string",
+            "title": "Apellido"
+          },
+          "rol": {
+            "$ref": "#/components/schemas/RolUsuario"
+          },
+          "email_verificado": {
+            "type": "boolean",
+            "title": "Email Verificado"
+          },
+          "debe_cambiar_password": {
+            "type": "boolean",
+            "title": "Debe Cambiar Password"
+          },
+          "ultimo_login": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultimo Login"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "fecha_nacimiento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Nacimiento"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_usuario",
+          "dni",
+          "email",
+          "nombre",
+          "apellido",
+          "rol",
+          "email_verificado",
+          "debe_cambiar_password"
+        ],
+        "title": "UsuarioOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerificacionResponse": {
+        "properties": {
+          "email_verificado": {
+            "type": "boolean",
+            "title": "Email Verificado"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email_verificado",
+          "mensaje"
+        ],
+        "title": "VerificacionResponse"
+      },
+      "VerificarEmailRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 16,
+            "title": "Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "VerificarEmailRequest"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "description": "JWT de acceso",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

@@ -180,4 +180,104 @@ describe("RecepcionPage", () => {
     expect(await screen.findByText(/llegada registrada con éxito/i)).toBeInTheDocument();
     expect(llamadaLlegadaTurnoId).toBe("turno-hoy-1");
   });
+
+  it("muestra advertencia si hay múltiples coincidencias sin coincidencia exacta de DNI", async () => {
+    const user = userEvent.setup();
+    simularCookieCsrf();
+
+    server.use(
+      http.post("*/api/v1/auth/refresh", () =>
+        HttpResponse.json(refreshDemo(usuarioDemo({ rol: "RECEPCIONISTA" }))),
+      ),
+      http.get("*/api/v1/recepcion/sala-espera", () => HttpResponse.json([])),
+      http.get("*/api/v1/pacientes", () => {
+        const base = {
+          id_usuario: "u",
+          email: "x@example.com",
+          telefono: null,
+          fecha_nacimiento: null,
+          habilitado: true,
+          email_verificado: true,
+        };
+        return HttpResponse.json({
+          items: [
+            { ...base, id_paciente: "p-1", dni: "38999111", nombre: "Juan", apellido: "Perez" },
+            { ...base, id_paciente: "p-2", dni: "38999222", nombre: "Juana", apellido: "Perez" },
+          ],
+          page: 1,
+          page_size: 20,
+          total: 2,
+          pages: 1,
+        });
+      }),
+    );
+
+    renderApp("/recepcion");
+
+    const tabPacientes = await screen.findByRole("button", { name: /pacientes & dni/i });
+    await user.click(tabPacientes);
+
+    const inputBusqueda = screen.getByPlaceholderText(/ingresá dni del paciente/i);
+    await user.type(inputBusqueda, "38999");
+
+    const botonBuscar = screen.getByRole("button", { name: /buscar/i });
+    await user.click(botonBuscar);
+
+    expect(
+      await screen.findByText(/hay varias coincidencias: ingresá el dni completo/i),
+    ).toBeInTheDocument();
+  });
+
+  it("abre el modal de confirmación accesible al marcar un paciente ausente", async () => {
+    const user = userEvent.setup();
+    simularCookieCsrf();
+    let ausenteTurnoId: string | null = null;
+
+    server.use(
+      http.post("*/api/v1/auth/refresh", () =>
+        HttpResponse.json(refreshDemo(usuarioDemo({ rol: "RECEPCIONISTA" }))),
+      ),
+      http.get("*/api/v1/recepcion/sala-espera", () =>
+        HttpResponse.json([
+          {
+            id_turno: "t-ausente-1",
+            id_paciente: "p-1",
+            id_medico: "m-1",
+            fecha_hora: "2026-11-15T10:00:00Z",
+            duracion_minutos: 30,
+            fecha_hora_llegada: "2026-11-15T09:55:00Z",
+            orden_atencion: 1,
+            en_tolerancia: true,
+            medico_nombre: "María",
+            medico_apellido: "López",
+            especialidad_nombre: "Pediatría",
+            paciente_nombre: "Lucas",
+            paciente_apellido: "Martínez",
+            paciente_dni: "44111222",
+          },
+        ]),
+      ),
+      http.post("*/api/v1/recepcion/turnos/:id/ausente", ({ params }) => {
+        ausenteTurnoId = params.id as string;
+        return HttpResponse.json({
+          id_turno: params.id,
+          estado: "AUSENTE",
+        });
+      }),
+    );
+
+    renderApp("/recepcion");
+
+    const botonAusente = await screen.findByRole("button", { name: /ausente/i });
+    await user.click(botonAusente);
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /confirmar ausencia/i })).toBeInTheDocument();
+
+    const botonConfirmar = screen.getByRole("button", { name: /marcar ausente/i });
+    await user.click(botonConfirmar);
+
+    expect(await screen.findByText(/turno marcado como ausente/i)).toBeInTheDocument();
+    expect(ausenteTurnoId).toBe("t-ausente-1");
+  });
 });

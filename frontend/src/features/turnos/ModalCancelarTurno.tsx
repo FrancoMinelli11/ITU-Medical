@@ -48,11 +48,16 @@ export function ModalCancelarTurno({ turno, onClose, onCancelado }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-fade-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-cancelar-titulo"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-fade-in"
+    >
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 id="modal-cancelar-titulo" className="text-xl font-bold text-slate-900">
               {esCancelacionHabitual ? "Cancelar Turno" : "Solicitud de Cancelación Rápida"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">

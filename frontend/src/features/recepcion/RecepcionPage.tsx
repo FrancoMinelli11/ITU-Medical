@@ -4,6 +4,8 @@ import { AppNavbar } from "@/components/layout/AppNavbar";
 import { Alerta } from "@/components/ui/Alerta";
 import { Boton } from "@/components/ui/Boton";
 import { Cargando } from "@/components/ui/Cargando";
+import { ModalConfirmacion } from "@/components/ui/ModalConfirmacion";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { formatFechaHora, formatHora } from "@/lib/dates";
 import { mensajeDeError } from "@/lib/problem";
 import type { TurnoResponse } from "@/features/turnos/types";
@@ -58,6 +60,14 @@ export function RecepcionPage() {
   const [ejecutandoCierre, setEjecutandoCierre] = useState(false);
   const [resultadoCierre, setResultadoCierre] = useState<string | null>(null);
 
+  // Estados de confirmación y modales UI accesibles
+  const [idTurnoAusenteConfirmar, setIdTurnoAusenteConfirmar] = useState<string | null>(null);
+  const [confirmarLevantarRojo, setConfirmarLevantarRojo] = useState(false);
+  const [confirmarCierre, setConfirmarCierre] = useState(false);
+  const [solicitudRechazarId, setSolicitudRechazarId] = useState<string | null>(null);
+  const [motivoRechazoSolicitud, setMotivoRechazoSolicitud] = useState("");
+  const [resolviendoSolicitud, setResolviendoSolicitud] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
 
@@ -104,7 +114,7 @@ export function RecepcionPage() {
       const res = await recepcionApi.buscarPacientes(q);
       // La búsqueda es parcial: se elige la coincidencia exacta de DNI, o la única que haya.
       const p =
-        res.items.find((x) => x.dni === q) ?? (res.items.length === 1 ? res.items[0] : null);
+        res.items.find((x: PacienteItem) => x.dni === q) ?? (res.items.length === 1 ? res.items[0] : null);
       if (p) {
         setPacienteSeleccionado(p);
         const est = await recepcionApi.obtenerEstadoRestriccion(p.id_paciente);
@@ -161,7 +171,7 @@ export function RecepcionPage() {
     try {
       const res = await recepcionApi.buscarPacientes(q);
       const p =
-        res.items.find((x) => x.dni === q) ?? (res.items.length === 1 ? res.items[0] : null);
+        res.items.find((x: PacienteItem) => x.dni === q) ?? (res.items.length === 1 ? res.items[0] : null);
       if (!p) {
         setError(
           res.items.length === 0
@@ -203,13 +213,14 @@ export function RecepcionPage() {
     }
   };
 
-  // Marcar ausencia individual
-  const handleMarcarAusente = async (idTurno: string) => {
-    if (!confirm("¿Confirmar ausencia para este turno? Esta acción no se puede deshacer.")) return;
+  // Marcar ausencia individual con confirmación accesible
+  const ejecutarMarcarAusente = async () => {
+    if (!idTurnoAusenteConfirmar) return;
     setError(null);
     try {
-      await recepcionApi.registrarAusente(idTurno);
+      await recepcionApi.registrarAusente(idTurnoAusenteConfirmar);
       setMensajeExito("Turno marcado como AUSENTE.");
+      setIdTurnoAusenteConfirmar(null);
       void cargarSalaEspera();
     } catch (err) {
       setError(mensajeDeError(err));
@@ -217,27 +228,36 @@ export function RecepcionPage() {
   };
 
   // Resolver solicitud de cancelación
-  const handleResolverSolicitud = async (idSolicitud: string, aprobada: boolean) => {
-    let motivo: string | undefined = undefined;
-    if (!aprobada) {
-      const m = prompt("Ingresá el motivo del rechazo:");
-      if (!m) return;
-      motivo = m;
-    }
+  const handleAprobarSolicitud = async (idSolicitud: string) => {
     setError(null);
     try {
       await recepcionApi.resolverSolicitudCancelacion(idSolicitud, {
-        aprobada,
-        detalle: motivo,
+        aprobada: true,
       });
-      setMensajeExito(
-        aprobada
-          ? "Solicitud aprobada: el turno fue cancelado y el horario liberado."
-          : "Solicitud rechazada: el turno continúa confirmado."
-      );
+      setMensajeExito("Solicitud aprobada: el turno fue cancelado y el horario liberado.");
       void cargarSolicitudes();
     } catch (err) {
       setError(mensajeDeError(err));
+    }
+  };
+
+  const ejecutarRechazoSolicitud = async () => {
+    if (!solicitudRechazarId || !motivoRechazoSolicitud.trim()) return;
+    setResolviendoSolicitud(true);
+    setError(null);
+    try {
+      await recepcionApi.resolverSolicitudCancelacion(solicitudRechazarId, {
+        aprobada: false,
+        detalle: motivoRechazoSolicitud.trim(),
+      });
+      setMensajeExito("Solicitud rechazada: el turno continúa confirmado.");
+      setSolicitudRechazarId(null);
+      setMotivoRechazoSolicitud("");
+      void cargarSolicitudes();
+    } catch (err) {
+      setError(mensajeDeError(err));
+    } finally {
+      setResolviendoSolicitud(false);
     }
   };
 
@@ -265,14 +285,14 @@ export function RecepcionPage() {
   };
 
   // Levantar restricción
-  const handleLevantarRestriccion = async () => {
+  const ejecutarLevantarRestriccion = async () => {
     if (!idRestriccionActiva) return;
-    if (!confirm("¿Confirmás levantar la restricción de Usuario rojo para este paciente?")) return;
     setError(null);
     try {
       await recepcionApi.levantarRestriccion(idRestriccionActiva);
       setEsUsuarioRojo(false);
       setIdRestriccionActiva(null);
+      setConfirmarLevantarRojo(false);
       setMensajeExito("Restricción levantada exitosamente. El paciente puede operar con normalidad.");
     } catch (err) {
       setError(mensajeDeError(err));
@@ -280,8 +300,7 @@ export function RecepcionPage() {
   };
 
   // Cierre de jornada
-  const handleCierreJornada = async () => {
-    if (!confirm("¿Deseás ejecutar el cierre de jornada? Todos los turnos pasados del día sin llegada serán marcados como AUSENTE.")) return;
+  const ejecutarCierreJornada = async () => {
     setEjecutandoCierre(true);
     setError(null);
     setResultadoCierre(null);
@@ -290,6 +309,7 @@ export function RecepcionPage() {
       setResultadoCierre(
         `Cierre completado: se marcaron ${res.total_ausentes} turnos como ausentes.`
       );
+      setConfirmarCierre(false);
     } catch (err) {
       setError(mensajeDeError(err));
     } finally {
@@ -468,8 +488,10 @@ export function RecepcionPage() {
               </div>
 
               {cargandoEspera ? (
-                <div className="py-8 flex justify-center">
-                  <Cargando texto="Actualizando sala de espera..." />
+                <div className="space-y-3 py-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
                 </div>
               ) : salaEspera.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
@@ -530,7 +552,7 @@ export function RecepcionPage() {
                             <Boton
                               variante="peligro"
                               className="w-auto text-xs py-1 px-2.5"
-                              onClick={() => handleMarcarAusente(t.id_turno)}
+                              onClick={() => setIdTurnoAusenteConfirmar(t.id_turno)}
                             >
                               Ausente
                             </Boton>
@@ -593,7 +615,7 @@ export function RecepcionPage() {
                         <Boton
                           variante="secundario"
                           className="w-auto text-xs py-1 px-3 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                          onClick={handleLevantarRestriccion}
+                          onClick={() => setConfirmarLevantarRojo(true)}
                         >
                           Levantar Sanción
                         </Boton>
@@ -816,14 +838,14 @@ export function RecepcionPage() {
                     <div className="flex items-center gap-2">
                       <Boton
                         className="w-auto text-xs py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => handleResolverSolicitud(s.id_solicitud, true)}
+                        onClick={() => handleAprobarSolicitud(s.id_solicitud)}
                       >
                         Aprobar
                       </Boton>
                       <Boton
                         variante="peligro"
                         className="w-auto text-xs py-1.5 px-3"
-                        onClick={() => handleResolverSolicitud(s.id_solicitud, false)}
+                        onClick={() => setSolicitudRechazarId(s.id_solicitud)}
                       >
                         Rechazar
                       </Boton>
@@ -851,11 +873,102 @@ export function RecepcionPage() {
               <Boton
                 variante="peligro"
                 className="w-auto shadow-md"
-                onClick={handleCierreJornada}
+                onClick={() => setConfirmarCierre(true)}
                 cargando={ejecutandoCierre}
               >
                 Ejecutar Cierre de Jornada
               </Boton>
+            </div>
+          </div>
+        )}
+
+        {/* Modales de Confirmación Accesibles */}
+        <ModalConfirmacion
+          abierto={idTurnoAusenteConfirmar !== null}
+          titulo="Confirmar Ausencia"
+          mensaje="¿Confirmás que el paciente no se presentó al turno? Esta acción registrará la ausencia en el historial del paciente."
+          textoConfirmar="Marcar Ausente"
+          variante="peligro"
+          onConfirmar={ejecutarMarcarAusente}
+          onCancelar={() => setIdTurnoAusenteConfirmar(null)}
+        />
+
+        <ModalConfirmacion
+          abierto={confirmarLevantarRojo}
+          titulo="Levantar Sanción de Usuario Rojo"
+          mensaje="¿Confirmás que deseás levantar la restricción de usuario rojo para este paciente? El paciente podrá volver a reservar turnos por la web inmediatamente."
+          textoConfirmar="Levantar Sanción"
+          variante="primario"
+          onConfirmar={ejecutarLevantarRestriccion}
+          onCancelar={() => setConfirmarLevantarRojo(false)}
+        />
+
+        <ModalConfirmacion
+          abierto={confirmarCierre}
+          titulo="Confirmar Cierre de Jornada"
+          mensaje="¿Estás seguro de ejecutar el cierre de la jornada de atención? Todos los turnos de hoy que quedaron en estado reservado y sin registro de llegada se marcarán como AUSENTE."
+          textoConfirmar="Ejecutar Cierre"
+          variante="peligro"
+          cargando={ejecutandoCierre}
+          onConfirmar={ejecutarCierreJornada}
+          onCancelar={() => setConfirmarCierre(false)}
+        />
+
+        {solicitudRechazarId && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-rechazo-titulo"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+          >
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
+              <h3 id="modal-rechazo-titulo" className="text-lg font-bold text-slate-900">
+                Rechazar Solicitud de Cancelación
+              </h3>
+              <p className="text-sm text-slate-600">
+                Por favor indicá el motivo del rechazo. El turno permanecerá en estado RESERVADO.
+              </p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void ejecutarRechazoSolicitud();
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">Motivo del rechazo</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={motivoRechazoSolicitud}
+                    onChange={(e) => setMotivoRechazoSolicitud(e.target.value)}
+                    placeholder="Ej: Solicitud fuera de término sin justificación médica de urgencia"
+                    className="mt-1 block w-full rounded-lg border border-slate-300 p-2 text-sm focus:border-brand-500 focus:ring-brand-500"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Boton
+                    type="button"
+                    variante="secundario"
+                    className="w-auto text-xs"
+                    onClick={() => {
+                      setSolicitudRechazarId(null);
+                      setMotivoRechazoSolicitud("");
+                    }}
+                    disabled={resolviendoSolicitud}
+                  >
+                    Cancelar
+                  </Boton>
+                  <Boton
+                    type="submit"
+                    variante="peligro"
+                    className="w-auto text-xs"
+                    cargando={resolviendoSolicitud}
+                  >
+                    Rechazar Solicitud
+                  </Boton>
+                </div>
+              </form>
             </div>
           </div>
         )}

@@ -181,6 +181,7 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | RF-02, RF-07, RF-09, RF-10, RF-11, RF-12, RF-15, RF-16, RN-15..RN-19 (Portal Recepción: sala de espera con orden por prioridad y tolerancia, alta rápida paciente, reserva, cancelación con motivo, ausencias, usuario rojo) | `frontend/src/features/recepcion/RecepcionPage.tsx`, `recepcion/api.ts` | `RecepcionPage.test.tsx` |
 | RF-13, RF-14, RN-23, RN-24 (Portal Médico: agenda de turnos asignados, registro de atención EN_ESPERA -> ATENDIDO, notas clínicas de seguimiento) | `frontend/src/features/medico/MedicoPage.tsx`, `medico/api.ts` | `MedicoPage.test.tsx` |
 | Navegación por rol y dashboard | `frontend/src/components/layout/AppNavbar.tsx`, `frontend/src/features/inicio/InicioPage.tsx`, `frontend/src/App.tsx` | `App.test.tsx`, `PrimerIngresoPage.test.tsx` |
+| Contratos OpenAPI tipados, modales accesibles y skeletons UI/UX (PR 4, PR 5, PR 6) | `src/api/schema.d.ts`, `openapi-typescript`, `ModalConfirmacion.tsx`, `Skeleton.tsx` | `RecepcionPage.test.tsx`, `App.test.tsx` |
 
 Decisiones con impacto en trazabilidad:
 
