@@ -90,6 +90,22 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | P-28 (cambios de agenda con turnos afectados) | — | `test_agenda.py::test_cambio_horarios_afecta_turnos_rechazado` |
 | P-40 (bloqueo que solapa turnos existentes) | — | `test_agenda.py::test_bloqueo_con_turnos_rechazado_y_bloqueo_ok` |
 
+### H4 — turnos y reservas
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-05 (reserva web, verificación requerida) | `app/services/turno_service.py::reservar_web`, `POST /turnos` | `test_turnos.py::test_reserva_web_ok_y_notificacion` |
+| RF-06 (prevención turnos duplicados mismo médico) | `turno_service.py` + `ex_turno_medico` | `test_turnos.py::test_reserva_duplicada_mismo_medico_falla` |
+| RF-07 (creación de turnos desde recepción) | `app/services/turno_service.py::reservar_recepcion`, `POST /turnos/recepcion` | `test_turnos.py::test_reserva_recepcion_ok` |
+| RF-25, RN-33 (prevención solapamiento mismo paciente) | `turno_service.py` + `ex_turno_paciente` | `test_turnos.py::test_reserva_solapada_mismo_paciente_distintos_medicos_falla` |
+| RN-05, RN-06 (validación de agenda médica) | `turno_service.py::_validar_horario_agenda` | `test_turnos.py::test_reserva_fuera_de_agenda_o_bloqueada_rechazada` |
+| RN-21, RN-36 (restricción Usuario rojo) | `turno_service.py::es_usuario_rojo` (403 web, recepción permitida) | `test_turnos.py::test_reserva_web_usuario_rojo_rechazada` |
+| RN-32 (confirmación única e idempotente) | `notificacion_service.crear` + `uq_notificacion_confirmacion_recordatorio` | `test_turnos.py::test_reserva_web_ok_y_notificacion` |
+| RN-37 (rate limit reservas: 10/hora) | `RateLimiter(prefijo="booking:paciente", limite="10/hour")` | `test_turnos.py` |
+| RNF-02 (integridad y transaccionalidad atómica) | Rollback total ante `IntegrityError`, exclusion constraints con `btree_gist` | `test_turnos.py::test_reserva_concurrente_mismo_slot` |
+| RNF-03 (permisos server-side en turnos) | `turnos.py`, `turno_service.listar_turnos`, `obtener_turno` | `test_turnos.py::test_listar_turnos_permisos_y_filtros` |
+| P-08, P-09, P-10, P-11, P-32, P-37, P-38 | — | `test_turnos.py` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |

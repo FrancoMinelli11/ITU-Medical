@@ -89,6 +89,27 @@ def cuerpo_recuperacion(usuario: Usuario, token: str) -> tuple[str, str]:
     return asunto, cuerpo
 
 
+def cuerpo_confirmacion_turno(
+    usuario: Usuario,
+    *,
+    fecha_hora_texto: str,
+    medico_nombre_completo: str,
+    especialidad_nombre: str,
+) -> tuple[str, str]:
+    """Asunto y cuerpo del correo de confirmación de turno (RF-05, RF-22)."""
+    asunto = f"Confirmación de turno - {especialidad_nombre}"
+    cuerpo = (
+        f"{saludo(usuario)}\n\n"
+        "Tu turno médico ha sido confirmado con éxito.\n\n"
+        f"- Especialidad: {especialidad_nombre}\n"
+        f"- Profesional: {medico_nombre_completo}\n"
+        f"- Fecha y hora: {fecha_hora_texto}\n\n"
+        "Te recordamos presentarte con 10 minutos de anticipación."
+        f"{_pie()}"
+    )
+    return asunto, cuerpo
+
+
 async def despachar(
     notificacion: Notificacion, *, destinatario: str, asunto: str, cuerpo: str
 ) -> bool:
