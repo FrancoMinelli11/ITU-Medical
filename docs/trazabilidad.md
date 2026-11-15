@@ -134,6 +134,16 @@ tests de las páginas cubren el mensaje local y los del backend el `400 VALIDACI
 | P-20 (tolerancia: llegada > 10 min pierde prioridad) | — | `test_llegadas_y_orden.py::test_orden_atencion_y_tolerancia_10_minutos` |
 | P-21 (confirmación de ausencias) | — | `test_llegadas_y_orden.py::test_registro_ausencias_individual_y_cierre_jornada` |
 
+### H7 — anotaciones médicas y atención
+
+| Requisito | Implementación | Test |
+|---|---|---|
+| RF-13, CU-08, T-RF13 (registro de atención médica EN_ESPERA -> ATENDIDO) | `app/services/nota_service.py::registrar_atencion`, `POST /turnos/{id}/atender` | `test_notas_y_atencion.py::test_atender_turno_ok`, `test_atender_turno_invalido_falla` |
+| RF-14, RN-23, RN-24 (anotaciones médicas de seguimiento) | `app/services/nota_service.py::crear_nota_seguimiento`, `modificar_nota_seguimiento`, `listar_notas_paciente` | `test_notas_y_atencion.py::test_crear_y_modificar_nota_medica_ok` |
+| P-22 (registro y actualización de nota médica) | `POST /notas`, `PUT /notas/{id}`, `GET /notas/paciente/{id}` | `test_notas_y_atencion.py::test_crear_y_modificar_nota_medica_ok` |
+| P-23 (confidencialidad clínica: acceso restringido a rol MEDICO/ADMIN) | `app/api/v1/endpoints/notas.py::MedicoOAdminDep`, `nota_service.py` | `test_notas_y_atencion.py::test_acceso_notas_medicas_restringido` |
+| RF-19 (auditoría ATENCION_TURNO, ALTA_NOTA_MEDICA, MODIFICACION_NOTA_MEDICA) | `Accion.ATENCION_TURNO`, `ALTA_NOTA_MEDICA`, `MODIFICACION_NOTA_MEDICA` en `auditoria_service.py` | `test_notas_y_atencion.py::test_atender_turno_ok` |
+
 Decisiones con impacto en trazabilidad:
 
 | Decisión | Efecto | Dónde queda cubierto |

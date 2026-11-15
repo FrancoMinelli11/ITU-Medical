@@ -23,7 +23,7 @@ from app.schemas.turno import (
     TurnoResponse,
     TurnosListResponse,
 )
-from app.services import cancelacion_service, turno_service
+from app.services import cancelacion_service, nota_service, turno_service
 
 router = APIRouter()
 
@@ -31,6 +31,10 @@ PacienteDep = Annotated[Usuario, Depends(require_roles(RolUsuario.PACIENTE))]
 StaffDep = Annotated[
     Usuario,
     Depends(require_roles(RolUsuario.RECEPCIONISTA, RolUsuario.ADMINISTRADOR)),
+]
+MedicoOAdminDep = Annotated[
+    Usuario,
+    Depends(require_roles(RolUsuario.MEDICO, RolUsuario.ADMINISTRADOR)),
 ]
 CualquierRolDep = Annotated[
     Usuario,
@@ -193,5 +197,24 @@ async def solicitar_cancelacion_rapida(
         id_turno=id_turno,
         usuario_paciente=paciente_usuario,
         datos=datos,
+        request=request,
+    )
+
+
+@router.post(
+    "/{id_turno}/atender",
+    response_model=TurnoResponse,
+    summary="Registrar la atención de un turno (médico asignado)",
+)
+async def registrar_atencion(
+    id_turno: UUID,
+    session: SessionDep,
+    medico: MedicoOAdminDep,
+    request: Request,
+) -> TurnoResponse:
+    return await nota_service.registrar_atencion(
+        session,
+        id_turno=id_turno,
+        usuario_medico=medico,
         request=request,
     )
