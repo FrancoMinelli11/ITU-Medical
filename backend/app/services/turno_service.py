@@ -9,6 +9,7 @@ from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 from starlette.requests import Request
 
 from app.core.config import get_settings
@@ -469,14 +470,7 @@ async def listar_turnos(
     tamano_pagina: int = 20,
 ) -> TurnosListResponse:
     """Lista turnos con control de permisos por rol (RNF-03)."""
-    stmt = (
-        select(Turno, Medico, Usuario, Especialidad, Paciente, Usuario)
-        .join(Medico, Medico.id_medico == Turno.id_medico)
-        .join(Usuario, Usuario.id_usuario == Medico.id_usuario)
-        .join(Especialidad, Especialidad.id_especialidad == Medico.id_especialidad)
-        .join(Paciente, Paciente.id_paciente == Turno.id_paciente)
-        .join(Usuario, Usuario.id_usuario == Paciente.id_usuario)
-    )
+    filtros = []
 
     # Filtrar según el rol del usuario autenticado
     if usuario_actual.rol == RolUsuario.PACIENTE:
@@ -485,7 +479,7 @@ async def listar_turnos(
         )
         if paciente is None:
             return TurnosListResponse(items=[], total=0, pagina=pagina, tamano_pagina=tamano_pagina)
-        stmt = stmt.where(Turno.id_paciente == paciente.id_paciente)
+        filtros.append(Turno.id_paciente == paciente.id_paciente)
 
     elif usuario_actual.rol == RolUsuario.MEDICO:
         medico = await session.scalar(
@@ -493,33 +487,46 @@ async def listar_turnos(
         )
         if medico is None:
             return TurnosListResponse(items=[], total=0, pagina=pagina, tamano_pagina=tamano_pagina)
-        stmt = stmt.where(Turno.id_medico == medico.id_medico)
+        filtros.append(Turno.id_medico == medico.id_medico)
 
     else:
         # RECEPCIONISTA o ADMINISTRADOR pueden filtrar opcionalmente
         if id_paciente is not None:
-            stmt = stmt.where(Turno.id_paciente == id_paciente)
+            filtros.append(Turno.id_paciente == id_paciente)
         if id_medico is not None:
-            stmt = stmt.where(Turno.id_medico == id_medico)
+            filtros.append(Turno.id_medico == id_medico)
 
     if estado is not None:
-        stmt = stmt.where(Turno.estado == estado)
+        filtros.append(Turno.estado == estado)
 
     if fecha_desde is not None:
         inicio_utc = to_utc(datetime.combine(fecha_desde, time.min, tzinfo=LOCAL_TZ))
-        stmt = stmt.where(Turno.fecha_hora >= inicio_utc)
+        filtros.append(Turno.fecha_hora >= inicio_utc)
 
     if fecha_hasta is not None:
         fin_utc = to_utc(datetime.combine(fecha_hasta, time.max, tzinfo=LOCAL_TZ))
-        stmt = stmt.where(Turno.fecha_hora <= fin_utc)
+        filtros.append(Turno.fecha_hora <= fin_utc)
 
-    # Total de registros
-    count_stmt = select(func.count()).select_from(stmt.subquery())
+    # Total de registros sin joins innecesarios
+    count_stmt = select(func.count(Turno.id_turno)).where(*filtros)
     total = (await session.scalar(count_stmt)) or 0
 
-    # Paginación y orden cronológico
-    offset = (pagina - 1) * tamano_pagina
-    stmt = stmt.order_by(Turno.fecha_hora.asc()).offset(offset).limit(tamano_pagina)
+    # Aliases separados para evitar el error 'table name "usuario" specified more than once'
+    UsuarioMedico = aliased(Usuario, name="usuario_medico")
+    UsuarioPaciente = aliased(Usuario, name="usuario_paciente")
+
+    stmt = (
+        select(Turno, Medico, UsuarioMedico, Especialidad, Paciente, UsuarioPaciente)
+        .join(Medico, Medico.id_medico == Turno.id_medico)
+        .join(UsuarioMedico, UsuarioMedico.id_usuario == Medico.id_usuario)
+        .join(Especialidad, Especialidad.id_especialidad == Medico.id_especialidad)
+        .join(Paciente, Paciente.id_paciente == Turno.id_paciente)
+        .join(UsuarioPaciente, UsuarioPaciente.id_usuario == Paciente.id_usuario)
+        .where(*filtros)
+        .order_by(Turno.fecha_hora.asc())
+        .offset((pagina - 1) * tamano_pagina)
+        .limit(tamano_pagina)
+    )
 
     resultados = (await session.execute(stmt)).all()
     items: list[TurnoResponse] = []
