@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/Boton";
 import { Cargando } from "@/components/ui/Cargando";
 import { formatFechaHora, formatHora } from "@/lib/dates";
 import { mensajeDeError } from "@/lib/problem";
+import type { TurnoResponse } from "@/features/turnos/types";
 import {
   type PacienteItem,
   type SolicitudCancelacionOut,
@@ -19,8 +20,14 @@ export function RecepcionPage() {
   // Estado Sala de Espera
   const [salaEspera, setSalaEspera] = useState<TurnoEnEsperaResponse[]>([]);
   const [cargandoEspera, setCargandoEspera] = useState(false);
-  const [idTurnoLlegada, setIdTurnoLlegada] = useState("");
-  const [registrandoLlegada, setRegistrandoLlegada] = useState(false);
+
+  // Estado Llegada de Pacientes
+  const [dniBusquedaLlegada, setDniBusquedaLlegada] = useState("");
+  const [buscandoPacienteLlegada, setBuscandoPacienteLlegada] = useState(false);
+  const [pacienteLlegada, setPacienteLlegada] = useState<PacienteItem | null>(null);
+  const [turnosHoyPaciente, setTurnosHoyPaciente] = useState<TurnoResponse[]>([]);
+  const [cargandoTurnosHoy, setCargandoTurnosHoy] = useState(false);
+  const [registrandoLlegadaId, setRegistrandoLlegadaId] = useState<string | null>(null);
 
   // Estado Búsqueda de Pacientes
   const [dniBusqueda, setDniBusqueda] = useState("");
@@ -141,22 +148,58 @@ export function RecepcionPage() {
     }
   };
 
-  // Registrar llegada de turno
-  const handleRegistrarLlegada = async (e: React.FormEvent) => {
+  // Buscar turnos de hoy del paciente para registrar llegada
+  const handleBuscarPacienteLlegada = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!idTurnoLlegada.trim()) return;
-    setRegistrandoLlegada(true);
+    const q = dniBusquedaLlegada.trim();
+    if (!q) return;
+    setBuscandoPacienteLlegada(true);
+    setError(null);
+    setMensajeExito(null);
+    setPacienteLlegada(null);
+    setTurnosHoyPaciente([]);
+    try {
+      const res = await recepcionApi.buscarPacientes(q);
+      const p =
+        res.items.find((x) => x.dni === q) ?? (res.items.length === 1 ? res.items[0] : null);
+      if (!p) {
+        setError(
+          res.items.length === 0
+            ? "No se encontró ningún paciente con el DNI ingresado."
+            : "Hay varias coincidencias: ingresá el DNI completo.",
+        );
+        return;
+      }
+      setPacienteLlegada(p);
+      setCargandoTurnosHoy(true);
+      const formatoDia = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Argentina/Buenos_Aires",
+      });
+      const hoyBA = formatoDia.format(new Date());
+      const turnosRes = await recepcionApi.listarTurnosDelPaciente(p.id_paciente, hoyBA);
+      setTurnosHoyPaciente(turnosRes.items);
+    } catch (err) {
+      setError(mensajeDeError(err));
+    } finally {
+      setBuscandoPacienteLlegada(false);
+      setCargandoTurnosHoy(false);
+    }
+  };
+
+  // Registrar llegada de turno con un clic
+  const handleRegistrarLlegadaTurno = async (idTurno: string) => {
+    setRegistrandoLlegadaId(idTurno);
     setError(null);
     setMensajeExito(null);
     try {
-      await recepcionApi.registrarLlegada(idTurnoLlegada.trim());
-      setIdTurnoLlegada("");
+      await recepcionApi.registrarLlegada(idTurno);
       setMensajeExito("Llegada registrada con éxito. El paciente ingresó a la sala de espera.");
+      setTurnosHoyPaciente((prev) => prev.filter((t) => t.id_turno !== idTurno));
       void cargarSalaEspera();
     } catch (err) {
       setError(mensajeDeError(err));
     } finally {
-      setRegistrandoLlegada(false);
+      setRegistrandoLlegadaId(null);
     }
   };
 
@@ -322,28 +365,85 @@ export function RecepcionPage() {
         {/* PESTAÑA: SALA DE ESPERA (RF-12) */}
         {pestaña === "espera" && (
           <div className="space-y-6">
-            {/* Formulario rápido de llegada */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-bold text-slate-900 mb-2">
-                Registrar Llegada de Paciente
-              </h2>
-              <form onSubmit={handleRegistrarLlegada} className="flex flex-wrap items-center gap-3">
+            {/* Registro de llegada buscando por DNI */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  Registrar Llegada de Paciente
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Buscá al paciente por DNI para ver sus turnos reservados de hoy y registrar su ingreso con un clic.
+                </p>
+              </div>
+
+              <form onSubmit={handleBuscarPacienteLlegada} className="flex flex-wrap items-center gap-3">
                 <input
                   type="text"
-                  placeholder="ID de Turno (UUID)..."
-                  value={idTurnoLlegada}
-                  onChange={(e) => setIdTurnoLlegada(e.target.value)}
+                  placeholder="Ingresá DNI del paciente..."
+                  value={dniBusquedaLlegada}
+                  onChange={(e) => setDniBusquedaLlegada(e.target.value)}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 w-full sm:w-80 focus:border-brand-500 focus:ring-brand-500"
                   required
                 />
                 <Boton
                   type="submit"
-                  className="w-auto"
-                  cargando={registrandoLlegada}
+                  className="w-auto text-xs py-2 px-4"
+                  cargando={buscandoPacienteLlegada}
                 >
-                  Registrar Llegada
+                  Buscar Turnos de Hoy
                 </Boton>
               </form>
+
+              {cargandoTurnosHoy && (
+                <div className="py-4 flex justify-center">
+                  <Cargando texto="Buscando turnos de hoy..." />
+                </div>
+              )}
+
+              {pacienteLlegada && !cargandoTurnosHoy && (
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">
+                      {pacienteLlegada.nombre} {pacienteLlegada.apellido}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      DNI {pacienteLlegada.dni} · {pacienteLlegada.email}
+                    </p>
+                  </div>
+
+                  {turnosHoyPaciente.length === 0 ? (
+                    <p className="text-sm text-slate-600 italic">
+                      El paciente no tiene turnos programados para el día de hoy.
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-slate-200">
+                      {turnosHoyPaciente.map((turno) => (
+                        <div
+                          key={turno.id_turno}
+                          className="py-2.5 flex flex-wrap items-center justify-between gap-3"
+                        >
+                          <div>
+                            <span className="font-semibold text-sm text-slate-900">
+                              {formatHora(turno.fecha_hora)} hs
+                            </span>
+                            <span className="text-xs text-slate-600 block">
+                              Dr(a). {turno.medico_nombre} {turno.medico_apellido} · {turno.especialidad_nombre}
+                            </span>
+                          </div>
+                          <Boton
+                            type="button"
+                            className="w-auto text-xs py-1.5 px-3 bg-brand-600 hover:bg-brand-700"
+                            cargando={registrandoLlegadaId === turno.id_turno}
+                            onClick={() => handleRegistrarLlegadaTurno(turno.id_turno)}
+                          >
+                            Registrar Llegada
+                          </Boton>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Tabla con Orden de Atención RF-12 */}

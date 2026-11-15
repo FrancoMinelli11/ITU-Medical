@@ -1,5 +1,10 @@
 import { clienteApi } from "@/api/client";
-import type { RestriccionEstadoOut, RestriccionOut, TurnoResponse } from "@/features/turnos/types";
+import type {
+  RestriccionEstadoOut,
+  RestriccionOut,
+  TurnoResponse,
+  TurnosListResponse,
+} from "@/features/turnos/types";
 
 export interface PacienteItem {
   id_paciente: string;
@@ -92,6 +97,19 @@ export const recepcionApi = {
   async obtenerSalaEspera(idMedico?: string): Promise<TurnoEnEsperaResponse[]> {
     const query = idMedico ? `?id_medico=${idMedico}` : "";
     return clienteApi.get<TurnoEnEsperaResponse[]>(`/recepcion/sala-espera${query}`);
+  },
+
+  async listarTurnosDelPaciente(idPaciente: string, fecha?: string): Promise<TurnosListResponse> {
+    const params = new URLSearchParams({
+      id_paciente: idPaciente,
+      estado: "RESERVADO",
+      tamano_pagina: "50",
+    });
+    if (fecha) {
+      params.set("fecha_desde", fecha);
+      params.set("fecha_hasta", fecha);
+    }
+    return clienteApi.get<TurnosListResponse>(`/turnos?${params.toString()}`);
   },
 
   async registrarLlegada(idTurno: string): Promise<TurnoResponse> {
