@@ -61,6 +61,7 @@ export function AppShell() {
 
   if (usuario.rol === "ADMINISTRADOR") {
     navItems.push(
+      { to: "/admin", label: "Gestión de Agendas", icon: "calendar" },
       { to: "/recepcion", label: "Recepción & Espera", icon: "people" },
       { to: "/medico", label: "Consultorio Médico", icon: "stethoscope" },
     );

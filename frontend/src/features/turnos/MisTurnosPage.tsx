@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { Alerta } from "@/components/ui/Alerta";
 import { Icon } from "@/components/ui/Icon";
@@ -20,11 +20,21 @@ const ESTADO_CONFIG: Record<EstadoTurno, { texto: string; tone: StatusTone }> = 
 };
 
 export function MisTurnosPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [turnos, setTurnos] = useState<TurnoResponse[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pestaña, setPestaña] = useState<"proximos" | "historial">("proximos");
+  const tabParam = searchParams.get("tab");
+  const [pestaña, setPestaña] = useState<"proximos" | "historial">(
+    tabParam === "historial" ? "historial" : "proximos",
+  );
   const [turnoACancelar, setTurnoACancelar] = useState<TurnoResponse | null>(null);
+
+  useEffect(() => {
+    if (tabParam === "historial" || tabParam === "proximos") {
+      setPestaña(tabParam);
+    }
+  }, [tabParam]);
 
   const cargarTurnos = async () => {
     setCargando(true);
@@ -69,14 +79,20 @@ export function MisTurnosPage() {
           <button
             type="button"
             className={pestaña === "proximos" ? "active" : ""}
-            onClick={() => setPestaña("proximos")}
+            onClick={() => {
+              setPestaña("proximos");
+              setSearchParams({ tab: "proximos" });
+            }}
           >
             Próximos <b>{proximos.length}</b>
           </button>
           <button
             type="button"
             className={pestaña === "historial" ? "active" : ""}
-            onClick={() => setPestaña("historial")}
+            onClick={() => {
+              setPestaña("historial");
+              setSearchParams({ tab: "historial" });
+            }}
           >
             Historial <b>{historial.length}</b>
           </button>

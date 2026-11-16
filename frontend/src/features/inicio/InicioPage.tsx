@@ -14,8 +14,9 @@ export function InicioPage() {
   const [cargandoTurnos, setCargandoTurnos] = useState(false);
 
   const esPaciente = usuario?.rol === "PACIENTE";
-  const esStaff = usuario?.rol === "RECEPCIONISTA" || usuario?.rol === "ADMINISTRADOR";
-  const esMedico = usuario?.rol === "MEDICO" || usuario?.rol === "ADMINISTRADOR";
+  const esRecepcionista = usuario?.rol === "RECEPCIONISTA";
+  const esMedico = usuario?.rol === "MEDICO";
+  const esAdmin = usuario?.rol === "ADMINISTRADOR";
 
   useEffect(() => {
     if (!esPaciente) return;
@@ -26,7 +27,6 @@ export function InicioPage() {
       try {
         const res = await turnosApi.listarMisTurnos("RESERVADO");
         if (!cancelado && res.items.length > 0) {
-          // Ordenar por fecha_hora ascendente y tomar el más próximo
           const ordenados = [...res.items].sort(
             (a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime(),
           );
@@ -70,7 +70,11 @@ export function InicioPage() {
           <span>
             {esPaciente
               ? "Este es el resumen de tu atención médica."
-              : "Panel principal del Sistema de Gestión de Turnos Médicos."}
+              : esAdmin
+              ? "Panel de administración y supervisión del sistema ITU Medical."
+              : esMedico
+              ? "Panel de consultorio médico y atención de pacientes."
+              : "Panel de recepción, llegadas y sala de espera."}
           </span>
         </div>
         <Status tone="green">Sistema operativo</Status>
@@ -157,29 +161,29 @@ export function InicioPage() {
               </span>
               <div>
                 <h3>Reservar turno</h3>
-                <p>Elegí especialidad, profesional y horario.</p>
+                <p>Elegí especialidad, profesional y horario disponible.</p>
               </div>
               <Icon name="arrow" />
             </Link>
 
-            <Link to="/turnos" className="quick-card blue">
+            <Link to="/turnos?tab=proximos" className="quick-card blue">
               <span>
                 <Icon name="calendar" />
               </span>
               <div>
-                <h3>Mis turnos</h3>
-                <p>Revisá tus próximas visitas e historial.</p>
+                <h3>Mis turnos próximos</h3>
+                <p>Revisá tus turnos programados y confirmados.</p>
               </div>
               <Icon name="arrow" />
             </Link>
 
-            <Link to="/turnos" className="quick-card sand">
+            <Link to="/turnos?tab=historial" className="quick-card sand">
               <span>
                 <Icon name="file" />
               </span>
               <div>
-                <h3>Mis indicaciones</h3>
-                <p>Consultá notas y recomendaciones médicas.</p>
+                <h3>Historial de visitas</h3>
+                <p>Consultá tus turnos atendidos y anteriores.</p>
               </div>
               <Icon name="arrow" />
             </Link>
@@ -213,8 +217,8 @@ export function InicioPage() {
         </>
       )}
 
-      {/* VISTA RECEPCIÓN */}
-      {esStaff && !esPaciente && (
+      {/* VISTA RECEPCIONISTA */}
+      {esRecepcionista && (
         <>
           <div className="section-heading">
             <div>
@@ -224,29 +228,40 @@ export function InicioPage() {
           </div>
 
           <section className="quick-grid">
-            <Link to="/recepcion" className="quick-card mint">
+            <Link to="/recepcion?tab=espera" className="quick-card mint">
               <span>
                 <Icon name="people" />
               </span>
               <div>
-                <h3>Sala de Espera</h3>
-                <p>Orden de prioridad inteligente (RF-12) y tolerancia de 10m.</p>
+                <h3>Sala de Espera & Llegadas</h3>
+                <p>Búsqueda en vivo por DNI o nombre y registro de arribo con 1 clic.</p>
               </div>
               <Icon name="arrow" />
             </Link>
 
-            <Link to="/recepcion" className="quick-card blue">
+            <Link to="/recepcion?tab=pacientes" className="quick-card blue">
               <span>
                 <Icon name="search" />
               </span>
               <div>
-                <h3>Registrar Llegada</h3>
-                <p>Buscá por DNI y confirmá el arribo con un solo clic.</p>
+                <h3>Pacientes & Fichas</h3>
+                <p>Alta rápida de pacientes, consulta y control de sanciones.</p>
               </div>
               <Icon name="arrow" />
             </Link>
 
-            <Link to="/recepcion" className="quick-card sand">
+            <Link to="/recepcion?tab=solicitudes" className="quick-card sand">
+              <span>
+                <Icon name="calendar" />
+              </span>
+              <div>
+                <h3>Solicitudes de Cancelación</h3>
+                <p>Aprobación o rechazo de pedidos de cancelación con menos de 24 hs.</p>
+              </div>
+              <Icon name="arrow" />
+            </Link>
+
+            <Link to="/recepcion?tab=cierre" className="quick-card sand">
               <span>
                 <Icon name="clock" />
               </span>
@@ -260,35 +275,82 @@ export function InicioPage() {
         </>
       )}
 
-      {/* VISTA MÉDICO */}
-      {esMedico && !esPaciente && !esStaff && (
+      {/* VISTA ADMINISTRADOR */}
+      {esAdmin && (
         <>
           <div className="section-heading">
             <div>
-              <h2>Consultorio Médico</h2>
-              <p>Atención de pacientes del día y registro de notas de seguimiento clínico.</p>
+              <h2>Panel de Administración General</h2>
+              <p>Supervisión integral de agendas, consultorios y operaciones de recepción.</p>
             </div>
           </div>
 
           <section className="quick-grid">
-            <Link to="/medico" className="quick-card mint">
+            <Link to="/admin" className="quick-card mint">
+              <span>
+                <Icon name="calendar" />
+              </span>
+              <div>
+                <h3>Gestión de Agendas</h3>
+                <p>Configurá días, horarios y duración de turnos de todos los médicos.</p>
+              </div>
+              <Icon name="arrow" />
+            </Link>
+
+            <Link to="/recepcion" className="quick-card blue">
+              <span>
+                <Icon name="people" />
+              </span>
+              <div>
+                <h3>Recepción & Espera</h3>
+                <p>Supervisá la sala de espera, llegadas y altas de pacientes.</p>
+              </div>
+              <Icon name="arrow" />
+            </Link>
+
+            <Link to="/medico" className="quick-card sand">
+              <span>
+                <Icon name="stethoscope" />
+              </span>
+              <div>
+                <h3>Consultorio Médico</h3>
+                <p>Accedé a los consultorios del día y seguimiento de atención.</p>
+              </div>
+              <Icon name="arrow" />
+            </Link>
+          </section>
+        </>
+      )}
+
+      {/* VISTA MÉDICO */}
+      {esMedico && (
+        <>
+          <div className="section-heading">
+            <div>
+              <h2>Consultorio Médico</h2>
+              <p>Atención de pacientes del día y configuración de horarios de disponibilidad.</p>
+            </div>
+          </div>
+
+          <section className="quick-grid">
+            <Link to="/medico?tab=consultorio" className="quick-card mint">
               <span>
                 <Icon name="stethoscope" />
               </span>
               <div>
                 <h3>Consultorio del Día</h3>
-                <p>Visualizá tu agenda de turnos y marcá la atención médica.</p>
+                <p>Visualizá tu agenda de turnos, llamá pacientes y anotá evolución.</p>
               </div>
               <Icon name="arrow" />
             </Link>
 
-            <Link to="/medico" className="quick-card blue">
+            <Link to="/medico?tab=horarios" className="quick-card blue">
               <span>
-                <Icon name="file" />
+                <Icon name="clock" />
               </span>
               <div>
-                <h3>Notas de Seguimiento</h3>
-                <p>Historial confidencial y anotaciones para controles futuros.</p>
+                <h3>Mis Horarios de Atención</h3>
+                <p>Configurá tus días y franjas de disponibilidad para nuevos turnos.</p>
               </div>
               <Icon name="arrow" />
             </Link>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { Alerta } from "@/components/ui/Alerta";
 import { Icon } from "@/components/ui/Icon";
@@ -16,24 +17,44 @@ import {
 } from "./api";
 
 export function RecepcionPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tabValida = (tab: string | null): tab is "espera" | "llegada" | "pacientes" | "solicitudes" | "cierre" =>
+    tab === "espera" || tab === "pacientes" || tab === "solicitudes" || tab === "cierre";
+
   const [pestaña, setPestaña] = useState<
     "espera" | "llegada" | "pacientes" | "solicitudes" | "cierre"
-  >("espera");
+  >(tabValida(tabParam) ? tabParam : "espera");
+
+  useEffect(() => {
+    if (tabValida(tabParam)) {
+      setPestaña(tabParam);
+    }
+  }, [tabParam]);
+
+  const cambiarPestaña = (nueva: "espera" | "pacientes" | "solicitudes" | "cierre") => {
+    setPestaña(nueva);
+    setSearchParams({ tab: nueva });
+  };
 
   // Estado Sala de Espera
   const [salaEspera, setSalaEspera] = useState<TurnoEnEsperaResponse[]>([]);
   const [cargandoEspera, setCargandoEspera] = useState(false);
 
-  // Estado Llegada de Pacientes
+  // Estado Llegada de Pacientes (Typeahead)
   const [dniBusquedaLlegada, setDniBusquedaLlegada] = useState("");
+  const [sugerenciasLlegada, setSugerenciasLlegada] = useState<PacienteItem[]>([]);
+  const [buscandoSugerenciasLlegada, setBuscandoSugerenciasLlegada] = useState(false);
   const [buscandoPacienteLlegada, setBuscandoPacienteLlegada] = useState(false);
   const [pacienteLlegada, setPacienteLlegada] = useState<PacienteItem | null>(null);
   const [turnosHoyPaciente, setTurnosHoyPaciente] = useState<TurnoResponse[]>([]);
   const [cargandoTurnosHoy, setCargandoTurnosHoy] = useState(false);
   const [registrandoLlegadaId, setRegistrandoLlegadaId] = useState<string | null>(null);
 
-  // Estado Búsqueda de Pacientes
+  // Estado Búsqueda de Pacientes (Typeahead)
   const [dniBusqueda, setDniBusqueda] = useState("");
+  const [sugerenciasPacientes, setSugerenciasPacientes] = useState<PacienteItem[]>([]);
+  const [buscandoSugerenciasPacientes, setBuscandoSugerenciasPacientes] = useState(false);
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState<PacienteItem | null>(null);
   const [buscandoPaciente, setBuscandoPaciente] = useState(false);
   const [esUsuarioRojo, setEsUsuarioRojo] = useState(false);
@@ -103,46 +124,77 @@ export function RecepcionPage() {
     void cargarSolicitudes();
   }, []);
 
-  // Búsqueda para registrar llegada
+  // ─── Typeahead: Llegada de Pacientes ─────────────────────────────────────────
+
+  useEffect(() => {
+    const q = dniBusquedaLlegada.trim();
+    if (!q || pacienteLlegada?.dni === q) {
+      setSugerenciasLlegada([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setBuscandoSugerenciasLlegada(true);
+      try {
+        const res = await recepcionApi.buscarPacientes(q);
+        setSugerenciasLlegada(res.items);
+      } catch {
+        setSugerenciasLlegada([]);
+      } finally {
+        setBuscandoSugerenciasLlegada(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [dniBusquedaLlegada, pacienteLlegada]);
+
+  const seleccionarPacienteLlegada = async (p: PacienteItem) => {
+    setDniBusquedaLlegada(p.dni);
+    setSugerenciasLlegada([]);
+    setPacienteLlegada(p);
+    setError(null);
+    setCargandoTurnosHoy(true);
+
+    const fechaHoy = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Argentina/Buenos_Aires",
+    }).format(new Date());
+
+    try {
+      const resTurnos = await recepcionApi.listarTurnosDelPaciente(p.id_paciente, fechaHoy);
+      const reservadosHoy = resTurnos.items.filter((t) => t.estado === "RESERVADO");
+      setTurnosHoyPaciente(reservadosHoy);
+    } catch (err) {
+      setError(mensajeDeError(err));
+    } finally {
+      setCargandoTurnosHoy(false);
+    }
+  };
+
   const handleBuscarPacienteLlegada = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dniBusquedaLlegada.trim()) return;
+    const q = dniBusquedaLlegada.trim();
+    if (!q) return;
+
     setBuscandoPacienteLlegada(true);
     setError(null);
     setMensajeExito(null);
     setPacienteLlegada(null);
     setTurnosHoyPaciente([]);
+    setSugerenciasLlegada([]);
 
     try {
-      const res = await recepcionApi.buscarPacientes(dniBusquedaLlegada.trim());
-      const exacto = res.items.find(
-        (x: PacienteItem) => x.dni === dniBusquedaLlegada.trim(),
-      );
+      const res = await recepcionApi.buscarPacientes(q);
+      const exacto = res.items.find((x: PacienteItem) => x.dni === q);
 
       if (exacto) {
-        setPacienteLlegada(exacto);
-        setCargandoTurnosHoy(true);
-
-        const fechaHoy = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "America/Argentina/Buenos_Aires",
-        }).format(new Date());
-
-        try {
-          const resTurnos = await recepcionApi.listarTurnosDelPaciente(
-            exacto.id_paciente,
-            fechaHoy,
-          );
-          const reservadosHoy = resTurnos.items.filter((t) => t.estado === "RESERVADO");
-          setTurnosHoyPaciente(reservadosHoy);
-        } finally {
-          setCargandoTurnosHoy(false);
-        }
+        await seleccionarPacienteLlegada(exacto);
+      } else if (res.items.length === 1) {
+        await seleccionarPacienteLlegada(res.items[0]);
+      } else if (res.items.length > 1) {
+        setSugerenciasLlegada(res.items);
+        setError("Hay varias coincidencias: ingresá el DNI completo.");
       } else {
-        setError(
-          res.items.length === 0
-            ? "No se encontró ningún paciente con ese DNI."
-            : "Hay varias coincidencias: ingresá el DNI completo.",
-        );
+        setError("No se encontró ningún paciente con ese DNI.");
       }
     } catch (err) {
       setError(mensajeDeError(err));
@@ -151,7 +203,6 @@ export function RecepcionPage() {
     }
   };
 
-  // Registrar llegada de turno
   const handleRegistrarLlegadaTurno = async (idTurno: string) => {
     setRegistrandoLlegadaId(idTurno);
     setError(null);
@@ -168,34 +219,68 @@ export function RecepcionPage() {
     }
   };
 
-  // Búsqueda de paciente general
+  // ─── Typeahead: Ficha de Pacientes ──────────────────────────────────────────
+
+  useEffect(() => {
+    const q = dniBusqueda.trim();
+    if (!q || pacienteSeleccionado?.dni === q) {
+      setSugerenciasPacientes([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setBuscandoSugerenciasPacientes(true);
+      try {
+        const res = await recepcionApi.buscarPacientes(q);
+        setSugerenciasPacientes(res.items);
+      } catch {
+        setSugerenciasPacientes([]);
+      } finally {
+        setBuscandoSugerenciasPacientes(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [dniBusqueda, pacienteSeleccionado]);
+
+  const seleccionarPacienteFicha = async (p: PacienteItem) => {
+    setDniBusqueda(p.dni);
+    setSugerenciasPacientes([]);
+    setPacienteSeleccionado(p);
+    setError(null);
+    try {
+      const estadoRes = await recepcionApi.obtenerEstadoRestriccion(p.id_paciente);
+      setEsUsuarioRojo(estadoRes.es_usuario_rojo);
+      setIdRestriccionActiva(estadoRes.restriccion_activa?.id_restriccion || null);
+    } catch {
+      setEsUsuarioRojo(false);
+    }
+  };
+
   const handleBuscarPaciente = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dniBusqueda.trim()) return;
+    const q = dniBusqueda.trim();
+    if (!q) return;
+
     setBuscandoPaciente(true);
     setError(null);
     setMensajeExito(null);
     setPacienteSeleccionado(null);
+    setSugerenciasPacientes([]);
 
     try {
-      const res = await recepcionApi.buscarPacientes(dniBusqueda.trim());
-      const exacto = res.items.find((x: PacienteItem) => x.dni === dniBusqueda.trim());
+      const res = await recepcionApi.buscarPacientes(q);
+      const exacto = res.items.find((x: PacienteItem) => x.dni === q);
 
       if (exacto) {
-        setPacienteSeleccionado(exacto);
-        try {
-          const estadoRes = await recepcionApi.obtenerEstadoRestriccion(exacto.id_paciente);
-          setEsUsuarioRojo(estadoRes.es_usuario_rojo);
-          setIdRestriccionActiva(estadoRes.restriccion_activa?.id_restriccion || null);
-        } catch {
-          setEsUsuarioRojo(false);
-        }
+        await seleccionarPacienteFicha(exacto);
+      } else if (res.items.length === 1) {
+        await seleccionarPacienteFicha(res.items[0]);
+      } else if (res.items.length > 1) {
+        setSugerenciasPacientes(res.items);
+        setError("Hay varias coincidencias: ingresá el DNI completo.");
       } else {
-        setError(
-          res.items.length === 0
-            ? "No se encontró ningún paciente con ese DNI."
-            : "Hay varias coincidencias: ingresá el DNI completo.",
-        );
+        setError("No se encontró ningún paciente con ese DNI.");
       }
     } catch (err) {
       setError(mensajeDeError(err));
@@ -221,7 +306,7 @@ export function RecepcionPage() {
       setNuevoNombre("");
       setNuevoApellido("");
       setNuevoEmail("");
-      setPacienteSeleccionado(nuevo);
+      await seleccionarPacienteFicha(nuevo);
       setMensajeExito(
         `Paciente ${nuevo.nombre} ${nuevo.apellido} dado de alta con éxito. Contraseña inicial: ${nuevo.dni}`,
       );
@@ -340,7 +425,7 @@ export function RecepcionPage() {
         <div>
           <p>ITU MEDICAL</p>
           <h1>Módulo de Recepción</h1>
-          <span>Control de sala de espera, llegadas por DNI y gestión de pacientes.</span>
+          <span>Control de sala de espera, búsqueda en vivo por DNI o nombre y gestión de pacientes.</span>
         </div>
       </div>
 
@@ -385,28 +470,28 @@ export function RecepcionPage() {
         <button
           type="button"
           className={pestaña === "espera" ? "active" : ""}
-          onClick={() => setPestaña("espera")}
+          onClick={() => cambiarPestaña("espera")}
         >
           Sala de espera
         </button>
         <button
           type="button"
           className={pestaña === "pacientes" ? "active" : ""}
-          onClick={() => setPestaña("pacientes")}
+          onClick={() => cambiarPestaña("pacientes")}
         >
           Pacientes & DNI
         </button>
         <button
           type="button"
           className={pestaña === "solicitudes" ? "active" : ""}
-          onClick={() => setPestaña("solicitudes")}
+          onClick={() => cambiarPestaña("solicitudes")}
         >
           Solicitudes {solicitudes.length > 0 && <b>{solicitudes.length}</b>}
         </button>
         <button
           type="button"
           className={pestaña === "cierre" ? "active" : ""}
-          onClick={() => setPestaña("cierre")}
+          onClick={() => cambiarPestaña("cierre")}
         >
           Cierre de jornada
         </button>
@@ -415,32 +500,85 @@ export function RecepcionPage() {
       {/* PESTAÑA: SALA DE ESPERA (RF-12) & REGISTRO DE LLEGADA */}
       {pestaña === "espera" && (
         <div className="space-y-6">
-          {/* Registro rápido de llegada */}
+          {/* Registro rápido de llegada con Autocomplete */}
           <section className="panel">
             <div className="panel-head">
               <div>
                 <h2>Registrar Llegada de Paciente</h2>
-                <p>Buscá al paciente por DNI para ver sus turnos de hoy y registrar su ingreso con un clic.</p>
+                <p>Buscá al paciente por DNI o por nombre/apellido mientras escribís para ver sus turnos de hoy.</p>
               </div>
             </div>
 
             <div className="p-6 space-y-4">
-              <form onSubmit={handleBuscarPacienteLlegada} className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2 border border-slate-300 rounded-xl px-3 py-2 w-full sm:w-80 bg-white">
-                  <Icon name="search" size={17} />
-                  <input
-                    type="text"
-                    placeholder="Ingresá DNI del paciente..."
-                    value={dniBusquedaLlegada}
-                    onChange={(e) => setDniBusquedaLlegada(e.target.value)}
-                    className="outline-none text-sm w-full"
-                    required
-                  />
-                </label>
-                <button type="submit" className="primary" disabled={buscandoPacienteLlegada}>
-                  {buscandoPacienteLlegada ? "Buscando..." : "Buscar turnos de hoy"}
-                </button>
-              </form>
+              <div className="relative">
+                <form onSubmit={handleBuscarPacienteLlegada} className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 border border-slate-300 rounded-xl px-3 py-2 w-full sm:w-96 bg-white focus-within:ring-2 focus-within:ring-brand-500">
+                    <Icon name="search" size={17} />
+                    <input
+                      type="text"
+                      placeholder="Ingresá DNI del paciente, nombre o apellido..."
+                      value={dniBusquedaLlegada}
+                      onChange={(e) => setDniBusquedaLlegada(e.target.value)}
+                      className="outline-none text-sm w-full"
+                      required
+                    />
+                    {buscandoSugerenciasLlegada && (
+                      <span className="text-xs text-slate-400 animate-spin">⟳</span>
+                    )}
+                  </label>
+                  <button type="submit" className="primary" disabled={buscandoPacienteLlegada}>
+                    {buscandoPacienteLlegada ? "Buscando..." : "Buscar turnos de hoy"}
+                  </button>
+                  {pacienteLlegada && (
+                    <button
+                      type="button"
+                      className="secondary text-xs"
+                      onClick={() => {
+                        setPacienteLlegada(null);
+                        setTurnosHoyPaciente([]);
+                        setDniBusquedaLlegada("");
+                      }}
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                </form>
+
+                {/* Dropdown de autocompletado en vivo */}
+                {sugerenciasLlegada.length > 0 && (
+                  <div className="absolute z-20 top-full left-0 mt-1 w-full sm:w-96 rounded-xl border border-slate-200 bg-white p-1 shadow-lg max-h-60 overflow-y-auto">
+                    <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      Resultados ({sugerenciasLlegada.length})
+                    </div>
+                    {sugerenciasLlegada.map((p) => {
+                      const ini = `${p.nombre.charAt(0)}${p.apellido.charAt(0)}`.toUpperCase();
+                      return (
+                        <button
+                          key={p.id_paciente}
+                          type="button"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors border-b last:border-b-0 border-slate-100"
+                          onClick={() => void seleccionarPacienteLlegada(p)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center">
+                              {ini}
+                            </span>
+                            <div>
+                              <b className="text-xs font-semibold text-slate-900 block">
+                                {p.nombre} {p.apellido}
+                              </b>
+                              <span className="text-[11px] text-slate-500">
+                                DNI {p.dni}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-xs text-brand-600 font-semibold">Seleccionar</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {cargandoTurnosHoy && (
                 <div className="py-4 space-y-2">
@@ -502,108 +640,108 @@ export function RecepcionPage() {
 
           {/* Tabla de sala de espera */}
           <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Pacientes en Espera (Orden de Prioridad)</h2>
-              <p>Ordenados según algoritmo RF-12: puntuales en tolerancia de 10 min por horario de turno.</p>
-            </div>
-            <div className="panel-tools">
-              <button
-                type="button"
-                className="icon-button"
-                onClick={cargarSalaEspera}
-                disabled={cargandoEspera}
-                aria-label="Actualizar sala de espera"
-              >
-                <Icon name="refresh" />
-              </button>
-            </div>
-          </div>
-
-          {cargandoEspera ? (
-            <div className="space-y-3 p-6">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : salaEspera.length === 0 ? (
-            <div className="empty-action">
-              <span>
-                <Icon name="people" size={28} />
-              </span>
-              <h3>No hay pacientes en espera</h3>
-              <p>Los pacientes ingresarán aquí al registrar su llegada en recepción.</p>
-            </div>
-          ) : (
-            <div className="patient-table">
-              <div className="table-row table-header">
-                <span>PACIENTE</span>
-                <span>TURNO</span>
-                <span>PROFESIONAL</span>
-                <span>LLEGADA</span>
-                <span>CONDICIÓN</span>
-                <span />
+            <div className="panel-head">
+              <div>
+                <h2>Pacientes en Espera (Orden de Prioridad)</h2>
+                <p>Ordenados según algoritmo RF-12: puntuales en tolerancia de 10 min por horario de turno.</p>
               </div>
-
-              {salaEspera.map((t) => {
-                const iniciales = `${t.paciente_nombre.charAt(0)}${t.paciente_apellido.charAt(0)}`.toUpperCase();
-                const partesTurno = formatPartesFecha(t.fecha_hora);
-                const partesLlegada = formatPartesFecha(t.fecha_hora_llegada);
-
-                return (
-                  <div className="table-row" key={t.id_turno}>
-                    <span className="patient">
-                      <i>{iniciales}</i>
-                      <b>
-                        {t.paciente_nombre} {t.paciente_apellido}
-                        <small>DNI {t.paciente_dni}</small>
-                      </b>
-                    </span>
-
-                    <span>
-                      <b>{partesTurno.horaTexto} hs</b>
-                      <small>Prioridad #{t.orden_atencion}</small>
-                    </span>
-
-                    <span>
-                      <b>Dr(a). {t.medico_nombre} {t.medico_apellido}</b>
-                      <small>{t.especialidad_nombre}</small>
-                    </span>
-
-                    <span>
-                      <b>{partesLlegada.horaTexto} hs</b>
-                    </span>
-
-                    <span>
-                      <Status tone={t.en_tolerancia ? "green" : "amber"}>
-                        {t.en_tolerancia ? "En tolerancia" : "Demorado (+10m)"}
-                      </Status>
-                    </span>
-
-                    <span>
-                      <button
-                        type="button"
-                        className="row-action"
-                        onClick={() => setIdTurnoAusenteConfirmar(t.id_turno)}
-                      >
-                        Ausente
-                      </button>
-                    </span>
-                  </div>
-                );
-              })}
+              <div className="panel-tools">
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={cargarSalaEspera}
+                  disabled={cargandoEspera}
+                  aria-label="Actualizar sala de espera"
+                >
+                  <Icon name="refresh" />
+                </button>
+              </div>
             </div>
-          )}
-        </section>
+
+            {cargandoEspera ? (
+              <div className="space-y-3 p-6">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : salaEspera.length === 0 ? (
+              <div className="empty-action">
+                <span>
+                  <Icon name="people" size={28} />
+                </span>
+                <h3>No hay pacientes en espera</h3>
+                <p>Los pacientes ingresarán aquí al registrar su llegada en recepción.</p>
+              </div>
+            ) : (
+              <div className="patient-table">
+                <div className="table-row table-header">
+                  <span>PACIENTE</span>
+                  <span>TURNO</span>
+                  <span>PROFESIONAL</span>
+                  <span>LLEGADA</span>
+                  <span>CONDICIÓN</span>
+                  <span />
+                </div>
+
+                {salaEspera.map((t) => {
+                  const iniciales = `${t.paciente_nombre.charAt(0)}${t.paciente_apellido.charAt(0)}`.toUpperCase();
+                  const partesTurno = formatPartesFecha(t.fecha_hora);
+                  const partesLlegada = formatPartesFecha(t.fecha_hora_llegada);
+
+                  return (
+                    <div className="table-row" key={t.id_turno}>
+                      <span className="patient">
+                        <i>{iniciales}</i>
+                        <b>
+                          {t.paciente_nombre} {t.paciente_apellido}
+                          <small>DNI {t.paciente_dni}</small>
+                        </b>
+                      </span>
+
+                      <span>
+                        <b>{partesTurno.horaTexto} hs</b>
+                        <small>Prioridad #{t.orden_atencion}</small>
+                      </span>
+
+                      <span>
+                        <b>Dr(a). {t.medico_nombre} {t.medico_apellido}</b>
+                        <small>{t.especialidad_nombre}</small>
+                      </span>
+
+                      <span>
+                        <b>{partesLlegada.horaTexto} hs</b>
+                      </span>
+
+                      <span>
+                        <Status tone={t.en_tolerancia ? "green" : "amber"}>
+                          {t.en_tolerancia ? "En tolerancia" : "Demorado (+10m)"}
+                        </Status>
+                      </span>
+
+                      <span>
+                        <button
+                          type="button"
+                          className="row-action"
+                          onClick={() => setIdTurnoAusenteConfirmar(t.id_turno)}
+                        >
+                          Ausente
+                        </button>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
       )}
 
-      {/* PESTAÑA: PACIENTES & DNI */}
+      {/* PESTAÑA: PACIENTES & DNI CON TYPEAHEAD */}
       {pestaña === "pacientes" && (
         <section className="panel">
           <div className="panel-head">
             <div>
               <h2>Búsqueda y Ficha de Pacientes</h2>
-              <p>Consultá el estado de la cuenta, restricciones y altas rápidas de recepción.</p>
+              <p>Consultá en vivo por DNI o nombre/apellido, estado de cuenta y restricciones.</p>
             </div>
             <button
               type="button"
@@ -615,21 +753,61 @@ export function RecepcionPage() {
           </div>
 
           <div className="p-6 space-y-6">
-            <form onSubmit={handleBuscarPaciente} className="flex items-center gap-3 w-full sm:w-96">
-              <label className="flex items-center gap-2 border border-slate-300 rounded-xl px-3 py-2 w-full bg-white">
-                <Icon name="search" size={17} />
-                <input
-                  type="text"
-                  placeholder="Ingresá DNI del paciente..."
-                  value={dniBusqueda}
-                  onChange={(e) => setDniBusqueda(e.target.value)}
-                  className="outline-none text-sm w-full"
-                />
-              </label>
-              <button type="submit" className="primary" disabled={buscandoPaciente}>
-                {buscandoPaciente ? "Buscando..." : "Buscar"}
-              </button>
-            </form>
+            <div className="relative w-full sm:w-96">
+              <form onSubmit={handleBuscarPaciente} className="flex items-center gap-3">
+                <label className="flex items-center gap-2 border border-slate-300 rounded-xl px-3 py-2 w-full bg-white focus-within:ring-2 focus-within:ring-brand-500">
+                  <Icon name="search" size={17} />
+                  <input
+                    type="text"
+                    placeholder="Ingresá DNI del paciente, nombre o apellido..."
+                    value={dniBusqueda}
+                    onChange={(e) => setDniBusqueda(e.target.value)}
+                    className="outline-none text-sm w-full"
+                  />
+                  {buscandoSugerenciasPacientes && (
+                    <span className="text-xs text-slate-400 animate-spin">⟳</span>
+                  )}
+                </label>
+                <button type="submit" className="primary" disabled={buscandoPaciente}>
+                  {buscandoPaciente ? "Buscando..." : "Buscar"}
+                </button>
+              </form>
+
+              {/* Dropdown de autocompletado en vivo */}
+              {sugerenciasPacientes.length > 0 && (
+                <div className="absolute z-20 top-full left-0 mt-1 w-full rounded-xl border border-slate-200 bg-white p-1 shadow-lg max-h-60 overflow-y-auto">
+                  <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Resultados ({sugerenciasPacientes.length})
+                  </div>
+                  {sugerenciasPacientes.map((p) => {
+                    const ini = `${p.nombre.charAt(0)}${p.apellido.charAt(0)}`.toUpperCase();
+                    return (
+                      <button
+                        key={p.id_paciente}
+                        type="button"
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors border-b last:border-b-0 border-slate-100"
+                        onClick={() => void seleccionarPacienteFicha(p)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center">
+                            {ini}
+                          </span>
+                          <div>
+                            <b className="text-xs font-semibold text-slate-900 block">
+                              {p.nombre} {p.apellido}
+                            </b>
+                            <span className="text-[11px] text-slate-500">
+                              DNI {p.dni}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-xs text-brand-600 font-semibold">Seleccionar</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {pacienteSeleccionado && (
               <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">

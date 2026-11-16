@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, time
 from pathlib import Path
 
 from sqlalchemy import or_, select, update
@@ -29,6 +29,7 @@ from app.core.config import get_settings  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.db.models import (  # noqa: E402
     Especialidad,
+    HorarioMedico,
     Medico,
     Paciente,
     RolUsuario,
@@ -285,6 +286,29 @@ async def get_or_create_paciente(session, *, usuario: Usuario, fecha_nacimiento:
     return paciente
 
 
+async def asegurar_horarios_seed(session, medico: Medico) -> None:
+    """Crea horarios lunes-viernes 9-13 hs, 30 min, si no existen ya."""
+    from sqlalchemy import select as sql_select
+
+    existente = await session.scalar(
+        sql_select(HorarioMedico).where(HorarioMedico.id_medico == medico.id_medico).limit(1)
+    )
+    if existente is not None:
+        return  # ya tiene horarios: idempotente
+
+    for dia in range(0, 5):  # 0=Lunes … 4=Viernes
+        horario = HorarioMedico(
+            id_medico=medico.id_medico,
+            dia_semana=dia,
+            hora_inicio=time(9, 0),
+            hora_fin=time(13, 0),
+            duracion_minutos=30,
+            activo=True,
+        )
+        session.add(horario)
+    await session.flush()
+
+
 def datos_con_admin_configurable(datos: DatosUsuario, settings) -> DatosUsuario:
     """El administrador se configura por SEED_ADMIN_* (.env)."""
     if datos.rol is not RolUsuario.ADMINISTRADOR:
@@ -340,6 +364,13 @@ async def main() -> None:
                 matricula=matricula,
             )
 
+        for email, nombre_especialidad, matricula in ASIGNACIONES_MEDICOS:
+            medico_obj = await session.scalar(
+                select(Medico).where(Medico.id_usuario == usuarios[email].id_usuario)
+            )
+            if medico_obj:
+                await asegurar_horarios_seed(session, medico_obj)
+
         for email, nacimiento in NACIMIENTOS.items():
             await get_or_create_paciente(
                 session,
@@ -358,6 +389,7 @@ async def main() -> None:
         print()
 
     print("Seed completado (S-14). Todos los correos quedan verificados.")
+    print("Horarios: lunes-viernes 09:00-13:00 cada 30 min para los 3 médicos.")
     print("Credenciales de desarrollo:")
     for credencial in credenciales:
         print(f"  {credencial.descripcion:<18} {credencial.email:<26} {credencial.password}")

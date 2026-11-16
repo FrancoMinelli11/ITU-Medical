@@ -2,6 +2,7 @@ import { Link, Route, Routes } from "react-router-dom";
 
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { AppShell } from "@/components/layout/AppShell";
+import { AdminPage } from "@/features/admin/AdminPage";
 import { CambiarPasswordPage } from "@/features/auth/CambiarPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { PrimerIngresoPage } from "@/features/auth/PrimerIngresoPage";
@@ -66,6 +67,10 @@ export default function App() {
 
             <Route element={<RutaProtegida roles={["MEDICO", "ADMINISTRADOR"]} />}>
               <Route path="/medico" element={<MedicoPage />} />
+            </Route>
+
+            <Route element={<RutaProtegida roles={["ADMINISTRADOR"]} />}>
+              <Route path="/admin" element={<AdminPage />} />
             </Route>
           </Route>
         </Route>
